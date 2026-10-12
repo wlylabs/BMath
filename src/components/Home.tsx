@@ -92,3 +92,27 @@ export function ToolCards() {
     </section>
   );
 }
+
+/** A way into the Holder Simulator, right after the token it simulates. */
+export function PlayTeaser() {
+  return (
+    <section aria-labelledby="play-teaser-title" className="mx-auto max-w-[1360px] px-4 pb-4 sm:px-6">
+      <NavLink href={ROUTES.play} className="card press-soft group flex flex-col gap-4 p-4 hover:-translate-x-px hover:-translate-y-px sm:flex-row sm:items-center sm:p-5">
+        <span aria-hidden className="flex size-16 shrink-0 items-center justify-center border-2 border-ink bg-sun text-[#151515] shadow-[3px_3px_0_0_var(--cast)]">
+          <PixelIcon name="play" className="size-9" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="tag">{t.playTeaser.tag}</span>
+          <span id="play-teaser-title" className="display mt-2 block text-3xl text-ink">
+            {t.playTeaser.title}
+          </span>
+          <span className="mt-1 block leading-relaxed text-ink-2">{t.playTeaser.body}</span>
+        </span>
+        <span className="btn btn-sun h-12 shrink-0">
+          {t.playTeaser.cta}
+          <PixelIcon name="arrow" className="size-4 transition-transform group-hover:translate-x-1" />
+        </span>
+      </NavLink>
+    </section>
+  );
+}

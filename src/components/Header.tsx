@@ -17,6 +17,7 @@ export const SECTION_TONE = {
   profit: { text: 'text-orange', bar: 'bg-orange' },
   earn: { text: 'text-teal', bar: 'bg-teal' },
   halflife: { text: 'text-plum', bar: 'bg-plum' },
+  play: { text: 'text-orange', bar: 'bg-orange' },
   methodology: { text: 'text-sun-shade', bar: 'bg-sun' },
   faq: { text: 'text-spot', bar: 'bg-spot' },
 } as const;
@@ -29,6 +30,7 @@ export function Header() {
     { key: 'profit', href: ROUTES.profit, label: t.calc.tabs.profit, icon: 'profit' },
     { key: 'earn', href: ROUTES.earn, label: t.calc.tabs.earn, icon: 'earn' },
     { key: 'halflife', href: ROUTES.halflife, label: t.calc.tabs.halflife, icon: 'hourglass' },
+    { key: 'play', href: ROUTES.play, label: t.nav.play, icon: 'play' },
     { key: 'methodology', href: ROUTES.methodology, label: t.nav.method, icon: 'book' },
     { key: 'faq', href: ROUTES.faq, label: t.nav.faq, icon: 'faq' },
   ];

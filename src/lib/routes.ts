@@ -5,6 +5,7 @@ export const ROUTES = {
   profit: '/profit/',
   earn: '/earn/',
   halflife: '/half-life/',
+  play: '/play/',
   methodology: '/methodology/',
   faq: '/faq/',
 } as const;
@@ -12,6 +13,9 @@ export const ROUTES = {
 export type CalculatorKey = 'fee' | 'profit' | 'earn' | 'halflife';
 
 export const CALCULATOR_KEYS: readonly CalculatorKey[] = ['fee', 'profit', 'earn', 'halflife'];
+
+/** Saved state key for the calculator last opened, which the dock's Calculators tile returns to. */
+export const LAST_CALCULATOR_KEY = 'last-calculator';
 
 /** "/fee", "/fee/" and "/fee/index.html" are the same page. */
 export function samePage(a: string, b: string): boolean {
@@ -26,6 +30,7 @@ const ORDER: readonly string[] = [
   ROUTES.profit,
   ROUTES.earn,
   ROUTES.halflife,
+  ROUTES.play,
   ROUTES.methodology,
   ROUTES.faq,
 ];

@@ -3,33 +3,44 @@
 import { usePathname } from 'next/navigation';
 import { t } from '../lib/copy';
 import { cx } from '../lib/cx';
-import { ROUTES, samePage } from '../lib/routes';
+import { CALCULATOR_KEYS, LAST_CALCULATOR_KEY, ROUTES, samePage } from '../lib/routes';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { NavLink } from './NavLink';
 import { PixelIcon, type PixelIconName } from './PixelIcon';
 
-const ITEMS: { href: string; label: 'home' | 'fee' | 'profit' | 'earn' | 'halflife' | 'method'; icon: PixelIconName; tile: string }[] = [
-  { href: ROUTES.home, label: 'home', icon: 'home', tile: 'bg-surface text-ink' },
-  { href: ROUTES.fee, label: 'fee', icon: 'fee', tile: 'bg-green text-[#151515]' },
-  { href: ROUTES.profit, label: 'profit', icon: 'profit', tile: 'bg-orange text-[#151515]' },
-  { href: ROUTES.earn, label: 'earn', icon: 'earn', tile: 'bg-teal text-[#151515]' },
-  { href: ROUTES.halflife, label: 'halflife', icon: 'hourglass', tile: 'bg-plum text-white' },
-  { href: ROUTES.methodology, label: 'method', icon: 'book', tile: 'bg-sun text-[#151515]' },
-];
+type Item = { href: string; label: 'home' | 'calculators' | 'play' | 'method'; icon: PixelIconName; tile: string; also?: readonly string[] };
+
+const CALCULATOR_PAGES: readonly string[] = CALCULATOR_KEYS.map((k) => ROUTES[k]);
 
 /** The dock for phones and tablets: a row of coloured tiles, as on bordrless.app. Wide screens use the header. */
 export function BottomNav() {
   const pathname = usePathname();
+  const [lastCalculator] = usePersistentState<string>(LAST_CALCULATOR_KEY, ROUTES.fee);
+  // four tiles: the calculators share one, which opens the last one used; their own switcher and
+  // swipes move between them
+  const items: Item[] = [
+    { href: ROUTES.home, label: 'home', icon: 'home', tile: 'bg-surface text-ink' },
+    {
+      href: CALCULATOR_PAGES.includes(lastCalculator) ? lastCalculator : ROUTES.fee,
+      label: 'calculators',
+      icon: 'fee',
+      tile: 'bg-green text-[#151515]',
+      also: CALCULATOR_PAGES,
+    },
+    { href: ROUTES.play, label: 'play', icon: 'play', tile: 'bg-orange text-[#151515]' },
+    { href: ROUTES.methodology, label: 'method', icon: 'book', tile: 'bg-sun text-[#151515]' },
+  ];
   return (
     <nav
       aria-label={t.nav.mobile}
       style={{ viewTransitionName: 'bottom-nav' }}
       className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-ink bg-bg pb-[env(safe-area-inset-bottom)] xl:hidden"
     >
-      <ul className="mx-auto grid h-[66px] max-w-xl grid-cols-6">
-        {ITEMS.map(({ href, label, icon, tile }) => {
-          const active = samePage(pathname, href);
+      <ul className="mx-auto grid h-[66px] max-w-xl grid-cols-4">
+        {items.map(({ href, label, icon, tile, also }) => {
+          const active = samePage(pathname, href) || !!also?.some((p) => samePage(pathname, p));
           return (
-            <li key={href} className="h-full">
+            <li key={label} className="h-full">
               <NavLink
                 href={href}
                 aria-current={active ? 'page' : undefined}
