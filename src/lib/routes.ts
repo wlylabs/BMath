@@ -5,6 +5,7 @@ export const ROUTES = {
   profit: '/profit/',
   earn: '/earn/',
   halflife: '/half-life/',
+  play: '/play/',
   methodology: '/methodology/',
   faq: '/faq/',
 } as const;
@@ -26,6 +27,7 @@ const ORDER: readonly string[] = [
   ROUTES.profit,
   ROUTES.earn,
   ROUTES.halflife,
+  ROUTES.play,
   ROUTES.methodology,
   ROUTES.faq,
 ];

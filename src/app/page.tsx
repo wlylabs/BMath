@@ -1,5 +1,5 @@
 import { Hero } from '../components/Hero';
-import { LiveStrip, ToolCards } from '../components/Home';
+import { LiveStrip, PlayTeaser, ToolCards } from '../components/Home';
 import { OurToken } from '../components/OurToken';
 import { CREATOR, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '../lib/site';
 import { PageTransition } from '../components/PageTransition';
@@ -24,6 +24,7 @@ export default function HomePage() {
       <Hero />
       <LiveStrip />
       <OurToken />
+      <PlayTeaser />
       <ToolCards />
     </PageTransition>
   );

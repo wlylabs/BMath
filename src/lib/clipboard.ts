@@ -21,16 +21,16 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-/** Native share sheet on touch devices, clipboard everywhere else. */
-export async function shareLink(url: string, title: string): Promise<'shared' | 'copied' | 'failed'> {
+/** Native share sheet on touch devices, clipboard everywhere else. A `text` goes in front of the link. */
+export async function shareLink(url: string, title: string, text?: string): Promise<'shared' | 'copied' | 'failed'> {
   const touch = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
   if (touch && typeof navigator.share === 'function') {
     try {
-      await navigator.share({ title, url });
+      await navigator.share(text ? { title, text, url } : { title, url });
       return 'shared';
     } catch (e) {
       if ((e as Error).name === 'AbortError') return 'shared';
     }
   }
-  return (await copyText(url)) ? 'copied' : 'failed';
+  return (await copyText(text ? `${text} ${url}` : url)) ? 'copied' : 'failed';
 }
