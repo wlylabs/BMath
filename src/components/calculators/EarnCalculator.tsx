@@ -53,12 +53,14 @@ export function EarnCalculator() {
   const holdingValid = Number.isFinite(holding) && holding >= 0 && holding <= 100;
   const rules = launch ? launch.rules : rulesFrom(s);
   const days = DAYS[s.period];
+  // a live token splits its creator fee the way its own companion does (or not at all, without one)
+  const liveSplit = launch ? (launch.companion ?? COMPANIONS.none) : null;
 
   const e = volumeValid
-    ? earnings({ volumeSol: volume * days, buyShare: s.buyShare / 100, rules, holdingShare: holdingValid ? holding / 100 : 0, companion: s.companion })
+    ? earnings({ volumeSol: volume * days, buyShare: s.buyShare / 100, rules, holdingShare: holdingValid ? holding / 100 : 0, companion: s.companion, split: liveSplit })
     : null;
   const $ = (v: number) => compactUsd(v * solUsd);
-  const split = COMPANIONS[s.companion];
+  const split = liveSplit ?? COMPANIONS[s.companion];
 
   return (
     <div ref={containerRef} className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-6">
@@ -101,15 +103,23 @@ export function EarnCalculator() {
           </Field>
         </div>
 
-        <Field label={t.earn.companion} labelId={ids.companion} hint={t.earn.companionSub[s.companion]}>
-          <Pills label={t.earn.companion} labelledBy={ids.companion} options={COMPANION_IDS.map((c) => ({ value: c, label: t.earn.companions[c] }))} value={s.companion} onChange={(v) => set('companion', v)} />
-          <p className="mt-2 text-[13px] leading-snug text-muted">{t.earn.companionHint}</p>
-        </Field>
+        {launch ? (
+          <Notice>
+            {launch.companion
+              ? t.earn.liveCompanion(pct(launch.companion.holders, { digits: 0 }), pct(launch.companion.launcher, { digits: 0 }), pct(launch.companion.buyback, { digits: 0 }))
+              : t.earn.liveNoCompanion}
+          </Notice>
+        ) : (
+          <Field label={t.earn.companion} labelId={ids.companion} hint={t.earn.companionSub[s.companion]}>
+            <Pills label={t.earn.companion} labelledBy={ids.companion} options={COMPANION_IDS.map((c) => ({ value: c, label: t.earn.companions[c] }))} value={s.companion} onChange={(v) => set('companion', v)} />
+            <p className="mt-2 text-[13px] leading-snug text-muted">{t.earn.companionHint}</p>
+          </Field>
+        )}
 
         <div className="rounded border border-line bg-surface-2 p-3.5 text-sm text-ink-2">
           <p className="label font-semibold text-ink">{t.earn.launchCost}</p>
           <p className="mt-1">{t.earn.launchCostValue(String(LAUNCH_FEE_SOL))}</p>
-          {s.companion !== 'none' && <p className="mt-1">{t.earn.bounty}</p>}
+          {split !== COMPANIONS.none && <p className="mt-1">{t.earn.bounty}</p>}
         </div>
       </section>
 

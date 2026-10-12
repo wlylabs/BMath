@@ -4,11 +4,12 @@ import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 
 import { Loader2, RefreshCw } from 'lucide-react';
 import { getLaunch, MINT_RE, searchLaunches, type Launch } from '../api/bordrless';
 import { compactUsd, pct, shortAddress, time } from '../lib/format';
-import { bordrlessTokenUrl } from '../lib/site';
+import { bordrlessTokenUrl, OUR_TOKEN } from '../lib/site';
 import { t } from '../lib/copy';
 import { cx } from '../lib/cx';
 import { LiveBadge, SwapValue } from './ui';
 import { PixelIcon } from './PixelIcon';
+import { Logo } from './Logo';
 
 function TokenArt({ token, size = 40 }: { token: Pick<Launch, 'image' | 'symbol'>; size?: number }) {
   const [failed, setFailed] = useState(false);
@@ -156,6 +157,23 @@ export function TokenLookup(props: { token: Launch | null; onChange: (t: Launch 
       setSwapped(true);
       onChange(l);
       setOpen(false);
+    } finally {
+      setLoadingPick(null);
+    }
+  };
+
+  // one tap to try the calculator on BMath's own token
+  const pickOurs = async () => {
+    setLoadingPick(OUR_TOKEN.mint);
+    try {
+      const l = await getLaunch(OUR_TOKEN.mint);
+      if (l) {
+        setSwapped(true);
+        onChange(l);
+      }
+    } catch {
+      setSearch({ q, ok: false, results: [] });
+      setOpen(true);
     } finally {
       setLoadingPick(null);
     }
@@ -311,6 +329,18 @@ export function TokenLookup(props: { token: Launch | null; onChange: (t: Launch 
         />
         {(status === 'loading' && open) || loadingPick ? <Loader2 aria-hidden className="mr-3.5 size-4 shrink-0 animate-spin text-muted" /> : null}
       </div>
+      {!showList && (
+        <button
+          type="button"
+          onClick={() => void pickOurs()}
+          disabled={loadingPick !== null}
+          className="press label mt-2 inline-flex items-center gap-2 rounded-sm border border-ink bg-sun px-2 py-1.5 font-semibold text-[#151515] shadow-[2px_2px_0_0_var(--cast)] disabled:opacity-60"
+        >
+          <Logo className="size-4" />
+          {t.lookup.tryOurs(OUR_TOKEN.symbol)}
+          {loadingPick === OUR_TOKEN.mint && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
+        </button>
+      )}
       {showList && (
         <div className="pop-in absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded border-2 border-ink bg-surface shadow-[4px_4px_0_0_var(--cast)]">
           {!q && <p className="label border-b border-line px-3.5 py-2 text-muted">{t.lookup.top}</p>}

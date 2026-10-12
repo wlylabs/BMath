@@ -497,6 +497,8 @@ export interface EarnInput {
   /** Your share of the tokens eligible for holder rewards, 0 to 1. */
   holdingShare: number;
   companion: CompanionId;
+  /** A live launch's own split, read from its companion; it wins over the template. */
+  split?: { buyback: number; holders: number; launcher: number } | null;
 }
 
 export interface EarnResult {
@@ -527,7 +529,7 @@ export function earnings(e: EarnInput): EarnResult {
   const r = e.rules;
   const creatorFees = (v * r.creatorFeeBps) / 10_000;
   const holderRule = (buy * r.holderFeeBuyBps + sell * r.holderFeeSellBps) / 10_000;
-  const split = COMPANIONS[e.companion];
+  const split = e.split ?? COMPANIONS[e.companion];
   const toBuyback = creatorFees * split.buyback;
   const toLauncher = creatorFees * split.launcher;
   const toHolders = holderRule + creatorFees * split.holders;
