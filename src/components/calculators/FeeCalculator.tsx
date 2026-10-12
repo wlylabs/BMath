@@ -85,7 +85,8 @@ export function FeeCalculator() {
   const lpNow = sniperLpFeeBps(elapsed);
   const inSniper = elapsed < SNIPER_WINDOW_SECS;
   const firstBuy = inSniper && s.side === 'buy' && s.firstBuy;
-  const halfLife = s.halfLife;
+  // a Half-Life token always charges its exit fee; otherwise the switch decides
+  const halfLife = launch?.halfLife || s.halfLife;
 
   const result = amountValid
     ? quoteTrade({
@@ -177,10 +178,10 @@ export function FeeCalculator() {
           {inSniper && s.side === 'buy' && (
             <Switch checked={s.firstBuy} onChange={(v) => set('firstBuy', v)} label={t.common.firstBuy} hint={t.common.firstBuyHint} />
           )}
-          {s.side === 'sell' && (
+          {s.side === 'sell' && !launch?.halfLife && (
             <Switch checked={s.halfLife} onChange={(v) => set('halfLife', v)} label={t.common.halfLife} hint={t.common.halfLifeHint} />
           )}
-          {s.side === 'sell' && s.halfLife && (
+          {s.side === 'sell' && halfLife && (
             <div className="enter px-1">
               <Field label={t.common.holdAge} htmlFor={ids.hold} aside={<span className="num text-sm font-semibold text-ink">{t.common.hours(s.holdHours)}</span>}>
                 <input
@@ -255,7 +256,7 @@ export function FeeCalculator() {
             <div className="mt-4 space-y-2 empty:hidden">
               {inSniper && !firstBuy && <Notice tone="warn">{t.fee.sniperWarn(pct(lpNow / 10_000))}</Notice>}
               {launch && !launch.holdersOn && launch.rules.holderFeeBuyBps + launch.rules.holderFeeSellBps > 0 && <Notice>{t.lookup.holdersOff}</Notice>}
-              {launch?.customHook && <Notice tone="warn">{t.lookup.customHook}</Notice>}
+              {launch?.halfLife ? <Notice>{t.lookup.halfLife}</Notice> : launch?.customHook && <Notice tone="warn">{t.lookup.customHook}</Notice>}
               {launch && !live && <Notice>{t.lookup.noPool}</Notice>}
             </div>
             <details className="group mt-4 border-t border-line pt-3">

@@ -9,6 +9,7 @@ const PRIORITY: Record<keyof typeof ROUTES, number> = {
   fee: 0.9,
   profit: 0.9,
   earn: 0.9,
+  halflife: 0.8,
   methodology: 0.6,
   faq: 0.5,
 };

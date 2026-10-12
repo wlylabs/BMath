@@ -66,13 +66,14 @@ export function ToolCards() {
     { href: ROUTES.fee, icon: 'fee', tile: 'bg-green', item: t.features.items[0]! },
     { href: ROUTES.profit, icon: 'profit', tile: 'bg-orange', item: t.features.items[1]! },
     { href: ROUTES.earn, icon: 'earn', tile: 'bg-teal', item: t.features.items[2]! },
+    { href: ROUTES.halflife, icon: 'hourglass', tile: 'bg-plum !text-white', item: t.features.items[3]! },
   ];
   return (
     <section aria-labelledby="tools-title" className="mx-auto max-w-[1360px] px-4 py-10 sm:px-6 lg:py-14">
       <h2 id="tools-title" className="display text-4xl text-ink sm:text-5xl">
         {t.features.title}
       </h2>
-      <div className="mt-6 grid gap-5 md:grid-cols-3">
+      <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ href, icon, tile, item }, i) => (
           <NavLink key={href} href={href} className="card press-soft group flex flex-col p-3 hover:-translate-x-px hover:-translate-y-px">
             <span className={cx('relative flex h-32 items-center justify-center border border-ink text-[#151515] sm:h-40', tile)}>

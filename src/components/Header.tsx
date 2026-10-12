@@ -16,7 +16,8 @@ export const SECTION_TONE = {
   fee: { text: 'text-green', bar: 'bg-green' },
   profit: { text: 'text-orange', bar: 'bg-orange' },
   earn: { text: 'text-teal', bar: 'bg-teal' },
-  methodology: { text: 'text-plum', bar: 'bg-plum' },
+  halflife: { text: 'text-plum', bar: 'bg-plum' },
+  methodology: { text: 'text-sun-shade', bar: 'bg-sun' },
   faq: { text: 'text-spot', bar: 'bg-spot' },
 } as const;
 
@@ -27,6 +28,7 @@ export function Header() {
     { key: 'fee', href: ROUTES.fee, label: t.calc.tabs.fee, icon: 'fee' },
     { key: 'profit', href: ROUTES.profit, label: t.calc.tabs.profit, icon: 'profit' },
     { key: 'earn', href: ROUTES.earn, label: t.calc.tabs.earn, icon: 'earn' },
+    { key: 'halflife', href: ROUTES.halflife, label: t.calc.tabs.halflife, icon: 'hourglass' },
     { key: 'methodology', href: ROUTES.methodology, label: t.nav.method, icon: 'book' },
     { key: 'faq', href: ROUTES.faq, label: t.nav.faq, icon: 'faq' },
   ];
@@ -49,7 +51,7 @@ export function Header() {
             </span>
             <span className="display text-2xl text-ink">BMath</span>
           </NavLink>
-          <nav aria-label={t.nav.primary} className="hidden items-center gap-1 lg:flex">
+          <nav aria-label={t.nav.primary} className="hidden items-center gap-0.5 xl:flex">
             {links.map((l, i) => {
               const active = samePage(pathname, l.href);
               return (
@@ -57,7 +59,7 @@ export function Header() {
                   key={l.href}
                   href={l.href}
                   aria-current={active ? 'page' : undefined}
-                  className={cx('relative flex h-10 items-center gap-2 px-2.5 text-[15px] font-semibold', active ? 'text-ink' : 'text-ink-2 hover:text-ink')}
+                  className={cx('relative flex h-10 items-center gap-2 whitespace-nowrap px-2.5 text-[15px] font-semibold', active ? 'text-ink' : 'text-ink-2 hover:text-ink')}
                 >
                   <PixelIcon name={l.icon} className={cx('size-[18px]', SECTION_TONE[l.key].text)} />
                   {/* named so the text stays above the bar while it glides past (vt-tab-label in globals.css) */}

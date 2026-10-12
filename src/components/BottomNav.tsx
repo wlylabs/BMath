@@ -7,24 +7,25 @@ import { ROUTES, samePage } from '../lib/routes';
 import { NavLink } from './NavLink';
 import { PixelIcon, type PixelIconName } from './PixelIcon';
 
-const ITEMS: { href: string; label: 'home' | 'fee' | 'profit' | 'earn' | 'method'; icon: PixelIconName; tile: string }[] = [
+const ITEMS: { href: string; label: 'home' | 'fee' | 'profit' | 'earn' | 'halflife' | 'method'; icon: PixelIconName; tile: string }[] = [
   { href: ROUTES.home, label: 'home', icon: 'home', tile: 'bg-surface text-ink' },
   { href: ROUTES.fee, label: 'fee', icon: 'fee', tile: 'bg-green text-[#151515]' },
   { href: ROUTES.profit, label: 'profit', icon: 'profit', tile: 'bg-orange text-[#151515]' },
   { href: ROUTES.earn, label: 'earn', icon: 'earn', tile: 'bg-teal text-[#151515]' },
+  { href: ROUTES.halflife, label: 'halflife', icon: 'hourglass', tile: 'bg-plum text-white' },
   { href: ROUTES.methodology, label: 'method', icon: 'book', tile: 'bg-sun text-[#151515]' },
 ];
 
-/** The dock for phones and tablets: a row of coloured tiles, as on bordrless.app. Desktop uses the header. */
+/** The dock for phones and tablets: a row of coloured tiles, as on bordrless.app. Wide screens use the header. */
 export function BottomNav() {
   const pathname = usePathname();
   return (
     <nav
       aria-label={t.nav.mobile}
       style={{ viewTransitionName: 'bottom-nav' }}
-      className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-ink bg-bg pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-ink bg-bg pb-[env(safe-area-inset-bottom)] xl:hidden"
     >
-      <ul className="mx-auto grid h-[66px] max-w-xl grid-cols-5">
+      <ul className="mx-auto grid h-[66px] max-w-xl grid-cols-6">
         {ITEMS.map(({ href, label, icon, tile }) => {
           const active = samePage(pathname, href);
           return (
@@ -33,7 +34,7 @@ export function BottomNav() {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cx(
-                  'relative flex h-full flex-col items-center justify-center gap-1 text-[11px] font-semibold',
+                  'relative flex h-full flex-col items-center justify-center gap-1 text-[10.5px] font-semibold tracking-tight',
                   tile,
                   active ? 'z-10 shadow-[inset_0_0_0_2px_var(--ink)]' : 'opacity-85 saturate-[0.85]',
                 )}

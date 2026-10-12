@@ -4,13 +4,14 @@ export const ROUTES = {
   fee: '/fee/',
   profit: '/profit/',
   earn: '/earn/',
+  halflife: '/half-life/',
   methodology: '/methodology/',
   faq: '/faq/',
 } as const;
 
-export type CalculatorKey = 'fee' | 'profit' | 'earn';
+export type CalculatorKey = 'fee' | 'profit' | 'earn' | 'halflife';
 
-export const CALCULATOR_KEYS: readonly CalculatorKey[] = ['fee', 'profit', 'earn'];
+export const CALCULATOR_KEYS: readonly CalculatorKey[] = ['fee', 'profit', 'earn', 'halflife'];
 
 /** "/fee", "/fee/" and "/fee/index.html" are the same page. */
 export function samePage(a: string, b: string): boolean {
@@ -24,6 +25,7 @@ const ORDER: readonly string[] = [
   ROUTES.fee,
   ROUTES.profit,
   ROUTES.earn,
+  ROUTES.halflife,
   ROUTES.methodology,
   ROUTES.faq,
 ];

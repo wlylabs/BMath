@@ -1,4 +1,4 @@
-import { headlineFees, type Reserves, type Rules } from '../lib/bordrless';
+import { HALF_LIFE, headlineFees, type Reserves, type Rules } from '../lib/bordrless';
 
 /**
  * Bordrless's public API (the one bordrless.app itself reads). It sends no CORS headers, so the
@@ -30,7 +30,7 @@ interface ApiLaunch {
   sniperWindowEndsAt: number;
   rules: { holderFeeBuyBps: number; holderFeeSellBps: number; burnBuyBps: number; burnSellBps: number; maxWalletBps: number };
   preset: string | null;
-  customHook: unknown;
+  customHook: { program?: string } | null;
   buyFeeBps: number;
   sellFeeBps: number;
   baseReserve?: string;
@@ -64,7 +64,10 @@ export interface Launch {
   buyFeeBps: number;
   sellFeeBps: number;
   preset: string | null;
+  /** The launch runs a token hook of its creator's choosing (not the kit). */
   customHook: boolean;
+  /** That hook is Half-Life, Bordrless's own (programs/half_life). */
+  halfLife: boolean;
   reserves: { baseReserve: string; quoteReserve: string; virtualBase: string; virtualQuote: string } | null;
   graduationQuote: string | null;
   supply: string | null;
@@ -119,6 +122,7 @@ function toLaunch(a: ApiLaunch, fetchedAt: number): Launch {
     sellFeeBps: a.sellFeeBps,
     preset: a.preset,
     customHook: !!a.customHook,
+    halfLife: a.customHook?.program === HALF_LIFE.program,
     reserves: hasReserves
       ? { baseReserve: a.baseReserve!, quoteReserve: a.quoteReserve!, virtualBase: a.virtualBase ?? '0', virtualQuote: a.virtualQuote ?? '0' }
       : null,
