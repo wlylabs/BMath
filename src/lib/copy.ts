@@ -67,7 +67,7 @@ export const t = {
   ours: {
     tag: 'Our token',
     headline: 'Hold $BMATH. Get paid in SOL.',
-    subhead: 'BMath’s own token on Bordrless. Its rules are fixed on chain: every trade pays holders and burns supply, and no one can change that.',
+    subhead: 'BMath’s own token on Bordrless. Its rules were fixed at launch: every trade pays holders and burns supply, and the creator can’t change that.',
     perkHolders: (p: string) => `Up to ${p} of every trade paid to holders, in SOL`,
     perkBurn: (p: string) => `${p} of every trade burned for good`,
     perkFair: 'Fair launch: no dev buy at launch',
