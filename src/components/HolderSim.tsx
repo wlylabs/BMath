@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Video } from 'lucide-react';
 import { COMPANIONS, quoteTrade, TOKEN_SUPPLY } from '../lib/bordrless';
 import { compactUsd, num, parseAmount, pct } from '../lib/format';
 import { t } from '../lib/copy';
@@ -42,6 +42,14 @@ const NO_BEST: Best = { sol: 0, days: 0, rank: null };
 const ENTRY_PICKS = ['0.1', '0.5', '1', '2', '5'];
 /** The whole run plays out in about this long, whatever its length. */
 const PLAY_MS = 2_400;
+
+/** The rank's tile in the video, in the light theme's colours. */
+const RANK_VIDEO: Record<Rank, { bg: string; fg: string }> = {
+  tourist: { bg: '#ebebe8', fg: '#0e0e0e' },
+  holder: { bg: '#2aa7a0', fg: '#151515' },
+  diamond: { bg: '#1f3dff', fg: '#ffffff' },
+  legend: { bg: '#f2c53d', fg: '#151515' },
+};
 
 const RANK_TILE: Record<Rank, string> = {
   tourist: 'bg-surface-2 text-ink',
@@ -111,6 +119,57 @@ export function HolderSim() {
       toast(t.play.shareCopied);
       flashShared();
     } else if (outcome === 'failed') toast(t.share.failed);
+  };
+
+  const [making, setMaking] = useState<number | null>(null);
+  const saveVideo = async () => {
+    if (!result || !run || !rank || making !== null) return;
+    setMaking(0);
+    try {
+      const { renderRunVideo } = await import('../lib/runVideo');
+      const scenario = t.play.scenarios[run.scenario].name;
+      const video = await renderRunVideo(
+        {
+          entrySol: run.entry,
+          days: result.days.map((d) => ({ reward: d.reward, total: d.total, event: d.event })),
+          rank: { name: t.play.ranks[rank].name, ...RANK_VIDEO[rank] },
+          symbol: OUR_TOKEN.symbol,
+          mintShort: `${OUR_TOKEN.mint.slice(0, 4)}…${OUR_TOKEN.mint.slice(-4)}`,
+          url: `${SITE_URL.replace(/^https?:\/\//, '')}${ROUTES.play.replace(/\/$/, '')}`,
+          text: {
+            hookLine: t.play.video.hookLine(run.days, scenario),
+            day: t.play.video.day,
+            bigDay: t.play.video.bigDay,
+            slowDay: t.play.video.slowDay,
+            rankLabel: t.play.video.rankLabel,
+            rankHidden: t.play.video.rankHidden,
+            payback: t.play.video.payback(result.paybackDay),
+            share: t.play.video.share(pct(result.days[0]!.share), pct(result.days.at(-1)!.share)),
+            cta: t.play.video.cta,
+            disclaimer: t.play.video.disclaimer,
+          },
+        },
+        (p) => setMaking(Math.round(p * 100)),
+      );
+      const file = new File([video.blob], `bmath-holder-${run.days}d.${video.extension}`, { type: video.blob.type });
+      // phones get the share sheet, which can post it or save it to the gallery
+      const touch = window.matchMedia('(pointer: coarse)').matches;
+      if (touch && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: t.play.title }).catch(() => undefined);
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+        toast(t.play.video.saved);
+      }
+    } catch {
+      toast(t.play.video.failed);
+    } finally {
+      setMaking(null);
+    }
   };
 
   const $ = (v: number) => compactUsd(v * solUsd);
@@ -248,10 +307,16 @@ export function HolderSim() {
                   {t.play.buy}
                   <PixelIcon name="external" className="size-3.5" />
                 </a>
-                <button type="button" onClick={share} className="btn h-12">
-                  {shared ? <Check aria-hidden className="size-4 text-pos" /> : <PixelIcon name="share" className="size-4" />}
-                  {t.play.shareButton}
-                </button>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button type="button" onClick={saveVideo} disabled={making !== null} aria-live="polite" className="btn btn-sun h-12 disabled:opacity-80">
+                    <Video aria-hidden className="size-4" />
+                    {making !== null ? t.play.video.making(making) : t.play.video.button}
+                  </button>
+                  <button type="button" onClick={share} className="btn h-12">
+                    {shared ? <Check aria-hidden className="size-4 text-pos" /> : <PixelIcon name="share" className="size-4" />}
+                    {t.play.shareButton}
+                  </button>
+                </div>
               </div>
             </div>
           )}
