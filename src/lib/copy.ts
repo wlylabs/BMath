@@ -29,7 +29,7 @@ export const t = {
     sub: 'See it before you sign.',
     highlight: 'BMath shows how much.',
     lead: 'Creator fee, holder rewards, burn, the sniper fee and Bordrless’s share, worked out for any launch before you trade.',
-    leadSmall: 'Same math as the programs, checked against the SDK’s own test vectors, and live pools from bordrless.app.',
+    leadSmall: 'Math from Bordrless’s own @bordrless/shared package, checked against the programs’ test vectors, and live pools from bordrless.app.',
     cta: 'Open the fee calculator',
     ctaSecondary: 'How the math works',
     ctaProfit: 'Profit & target',
@@ -336,7 +336,7 @@ export const t = {
   },
   method: {
     title: 'How BMath counts',
-    lead: 'Every figure follows the Bordrless docs and the public SDK. The fee math is a line-by-line port of the SDK’s launch-pool quote, and the test suite replays all 440 of its swap vectors.',
+    lead: 'Every figure follows the Bordrless docs and programs. The fee math comes from Bordrless’s own @bordrless/shared package, which mirrors the programs bit for bit; the test suite replays all 440 swap vectors the programs publish, and a real mainnet Half-Life sale.',
     orderTitle: 'The order of a swap',
     orderBody: 'A buy: the creator fee and holder rewards come out of your SOL first, then the LP fee and Bordrless’s share are charged on what reached the pool, the curve swaps the rest, and the burn comes out of the tokens. A sell runs the other way: the burn from your tokens, the curve, the LP fee from the SOL out, then the creator fee, holder rewards and Bordrless’s share.',
     feeTitle: 'One figure per side',
@@ -354,7 +354,7 @@ export const t = {
     halfLifeBody: 'Bordrless’s own token hook (program 53Spmtk…NSF8). Moving tokens out of a wallet, a sell or a send, costs fee = amount × ppm ÷ 1,000,000, rounded down, where ppm is 200,000 (20%) for tokens that just arrived, halves every 6 hours held, falls in a straight line within each 6 hours, and is 0 from 48 hours. So 10% at 6 h, 5% at 12 h, 2.5% at 18 h, 1.25% at 24 h. The fee goes to the token’s furnace, which anyone can burn. Each holding stores when its tokens arrived: bought tokens arrive now, sent tokens keep the sender’s time, and adding tokens averages the time by weight. Buys never pay it. On a sell the DEX also takes 25% of the fee’s value in SOL from the proceeds, as for every hook cut.',
     halfLifeSource: 'Source: fee_ppm, fee_on, blend and before_transfer in programs/half_life/src/lib.rs; halfLifeFeePpm in @bordrless/shared.',
     limitsTitle: 'What BMath does not count',
-    limitsBody: 'Solana network and priority fees, a custom creator hook’s own cuts, other traders moving the price between your buy and your sell, and slippage settings. Price impact assumes the pool sits at the market cap you enter.',
+    limitsBody: 'Solana network and priority fees, the cuts of a custom creator hook other than Half-Life, other traders moving the price between your buy and your sell, and slippage settings. Price impact assumes the pool sits at the market cap you enter.',
     sourcesTitle: 'Sources',
     sources: [
       { label: 'Bordrless docs: launch rules and fees', href: 'https://bordrless.app/docs/rules' },
