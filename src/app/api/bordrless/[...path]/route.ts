@@ -14,7 +14,8 @@ function json(body: unknown, status: number, cache: string) {
   return Response.json(body, { status, headers: { 'Cache-Control': cache } });
 }
 
-export async function GET(request: NextRequest, ctx: RouteContext<'/api/bordrless/[...path]'>) {
+// typed by hand: the global RouteContext only exists after `next typegen`, which CI's typecheck runs before
+export async function GET(request: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const path = (await ctx.params).path.join('/');
   if (!ALLOWED.some((re) => re.test(path))) return json({ error: 'not found' }, 404, 'public, s-maxage=3600');
 
