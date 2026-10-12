@@ -1,0 +1,734 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/bricolage-grotesque/standard.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+@import '@fontsource/ibm-plex-mono/latin-600.css';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * "Workbench" palette, built to sit next to bordrless.app: grey paper, near-black ink,
+ * hard cast shadows instead of blur, and flat signal colours (sun, spot, green, orange,
+ * teal, plum) that each carry a darker shade for the pressed edge. Gains and losses keep
+ * their own green and red. Text pairs are WCAG AA or better in both themes.
+ */
+:root,
+[data-theme='light'] {
+  --bg: #e6e6e3;
+  --surface: #f4f4f2;
+  --surface-2: #ebebe8;
+  --raised: #ffffff;
+  --line: #c6c6c2;
+  --line-strong: #8e8e8a;
+  --ink: #0e0e0e;
+  --ink-2: #3a3a3a;
+  --muted: #5c5c59;
+  --cast: #444444;
+  --deep: #0e0e0e;
+  --on-deep: #f4f4f2;
+  --accent: #f2c53d;
+  --accent-hover: #f5d061;
+  --accent-ink: #151515;
+  --accent-strong: #1f3dff;
+  --accent-wash: #f6ecc6;
+  --sun: #f2c53d;
+  --sun-shade: #a87b14;
+  --spot: #1f3dff;
+  --spot-shade: #10229e;
+  --green: #3dae5b;
+  --green-shade: #1e6b35;
+  --orange: #f28c28;
+  --orange-shade: #a85a10;
+  --teal: #2aa7a0;
+  --teal-shade: #176c67;
+  --plum: #6b3df2;
+  --plum-shade: #3f1fa0;
+  --chart: #1f3dff;
+  --pos: #1e6b35;
+  --pos-wash: #d7eadb;
+  --neg: #8c2c20;
+  --neg-wash: #f2dcd8;
+  --warn: #a85a10;
+  --warn-wash: #f6e3cf;
+  --ring: #1f3dff;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #17191c;
+  --surface: #22252a;
+  --surface-2: #2a2e34;
+  --raised: #31353c;
+  --line: #353a41;
+  --line-strong: #4d535b;
+  --ink: #eef0f2;
+  --ink-2: #cfd3d8;
+  --muted: #9aa0a8;
+  --cast: #0b0c0e;
+  --deep: #0e1013;
+  --on-deep: #eef0f2;
+  --accent: #f2c53d;
+  --accent-hover: #f5d061;
+  --accent-ink: #151515;
+  --accent-strong: #8fa0ff;
+  --accent-wash: #3a3320;
+  --chart: #8fa0ff;
+  --pos: #7fd49c;
+  --pos-wash: #1d3325;
+  --neg: #ff9184;
+  --neg-wash: #3a2220;
+  --warn: #f2a65a;
+  --warn-wash: #3a2c1c;
+  --ring: #8fa0ff;
+  color-scheme: dark;
+}
+
+/*
+ * Motion. Easing and duration follow Material Design 3 motion tokens
+ * (emphasized decelerate for things arriving, emphasized accelerate for
+ * things leaving, standard for things moving) and Vaul's drawer curve for
+ * anything that follows a finger. Only transform and opacity animate.
+ */
+:root {
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-press: 100ms;
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 400ms;
+  /* page transitions: short enough that a second tab tap is not lost to the overlay */
+  --dur-page: 340ms;
+  --dur-out: 120ms;
+  --dur-in: 200ms;
+  interpolate-size: allow-keywords;
+}
+
+@theme inline {
+  --font-sans: 'Bricolage Grotesque Variable', 'Arial Narrow', Arial, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Arial Narrow', Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-wash: var(--accent-wash);
+  --color-chart: var(--chart);
+  --color-pos: var(--pos);
+  --color-pos-wash: var(--pos-wash);
+  --color-neg: var(--neg);
+  --color-neg-wash: var(--neg-wash);
+  --color-warn: var(--warn);
+  --color-warn-wash: var(--warn-wash);
+  --color-cast: var(--cast);
+  --color-deep: var(--deep);
+  --color-on-deep: var(--on-deep);
+  --color-sun: var(--sun);
+  --color-sun-shade: var(--sun-shade);
+  --color-spot: var(--spot);
+  --color-spot-shade: var(--spot-shade);
+  --color-green: var(--green);
+  --color-green-shade: var(--green-shade);
+  --color-orange: var(--orange);
+  --color-orange-shade: var(--orange-shade);
+  --color-teal: var(--teal);
+  --color-teal-shade: var(--teal-shade);
+  --color-plum: var(--plum);
+  --color-plum-shade: var(--plum-shade);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: 4.5rem;
+  }
+  /* keyboard focus and anchors stop above the bottom dock, and above the result bar while it shows */
+  @media (width < 64rem) {
+    html {
+      scroll-padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    }
+    html:has([data-mobile-summary][aria-hidden='false']) {
+      scroll-padding-bottom: calc(10rem + env(safe-area-inset-bottom));
+    }
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* condensed heavy grotesque for headings, as on bordrless.app */
+  .display {
+    font-family: var(--font-display);
+    font-stretch: 75%;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+  }
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+  /* a panel: chalk face, thin line, a hard shadow cast down and right */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: 3px 3px 0 0 var(--cast);
+  }
+  /* the black tag that labels a section */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--deep);
+    color: var(--on-deep);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1;
+    padding: 0.4rem 0.5rem;
+  }
+  [data-theme='dark'] .tag {
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  /*
+   * Buttons sit on a hard shadow and drop into it when pressed. --face is the colour,
+   * --edge the shadow; variants set both.
+   */
+  .btn {
+    --face: var(--surface);
+    --edge: var(--cast);
+    --fg: var(--ink);
+    --border: var(--ink);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 1.1rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--face);
+    color: var(--fg);
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 3px 3px 0 0 var(--edge);
+    transition:
+      transform 80ms var(--ease-standard),
+      box-shadow 80ms var(--ease-standard),
+      background-color var(--dur-fast) var(--ease-standard);
+  }
+  .btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 0 var(--edge);
+  }
+  .btn:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 0 var(--edge);
+    transition-duration: 0s;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-sm {
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    font-size: 0.875rem;
+  }
+  .btn-icon {
+    min-height: 2.5rem;
+    width: 2.5rem;
+    padding: 0;
+  }
+  .btn-ink {
+    --face: var(--deep);
+    --fg: var(--on-deep);
+    --edge: var(--line-strong);
+    --border: var(--deep);
+  }
+  [data-theme='dark'] .btn-ink {
+    --face: var(--on-deep);
+    --fg: var(--deep);
+    --border: var(--on-deep);
+    --edge: var(--line-strong);
+  }
+  .btn-sun {
+    --face: var(--sun);
+    --fg: #151515;
+    --edge: var(--sun-shade);
+    --border: var(--sun-shade);
+  }
+  .btn-spot {
+    --face: var(--spot);
+    --fg: #ffffff;
+    --edge: var(--spot-shade);
+    --border: var(--spot-shade);
+  }
+  .range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 28px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .range::-webkit-slider-runnable-track {
+    height: 6px;
+    background: linear-gradient(to right, var(--ink) var(--fill, 0%), var(--line) var(--fill, 0%));
+  }
+  .range::-moz-range-track {
+    height: 6px;
+    background: var(--line);
+  }
+  .range::-moz-range-progress {
+    height: 6px;
+    background: var(--ink);
+  }
+  .range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    margin-top: -7px;
+    border-radius: 2px;
+    background: var(--sun);
+    border: 2px solid var(--ink);
+    box-shadow: 2px 2px 0 0 var(--cast);
+  }
+  .range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    background: var(--sun);
+    border: 2px solid var(--ink);
+    box-shadow: 2px 2px 0 0 var(--cast);
+  }
+}
+
+/* paper grain behind everything, a nod to the dithered art of the Bordrless site */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(var(--line) 0.6px, transparent 0.6px);
+  background-size: 6px 6px;
+  opacity: 0.55;
+}
+
+/* pixel art scales without smoothing */
+.pixel {
+  shape-rendering: crispEdges;
+  image-rendering: pixelated;
+}
+
+/* the blinking cursor on the hero tag */
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.blink {
+  animation: blink 1.2s steps(1, end) infinite;
+}
+
+/* ---------- tap feedback ---------- */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+.press {
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    opacity var(--dur-fast) var(--ease-standard);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: var(--dur-press);
+}
+/* everything else that is tappable dims under the finger, in place of the grey tap highlight */
+:where(a[href], button, summary, [role='option']):where(:not(.press, .press-soft, :disabled)):active {
+  opacity: 0.7;
+}
+/* large surfaces (cards) give less, or they read as wobbling */
+.press-soft {
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+.press-soft:active {
+  transform: scale(0.985);
+  transition-duration: var(--dur-press);
+}
+/* the slider thumb swells under the finger */
+.range::-webkit-slider-thumb {
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.range:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+.range::-moz-range-thumb {
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.range:active::-moz-range-thumb {
+  transform: scale(1.15);
+}
+
+/* ---------- page transitions (React <ViewTransition>, see PageTransition.tsx) ---------- */
+::view-transition {
+  pointer-events: none;
+}
+/* the page itself slides; the rest of the frame swaps without a crossfade */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+/* header, bottom nav and the calculator switcher stay put so the eye has an anchor */
+::view-transition-group(site-header),
+::view-transition-group(bottom-nav),
+::view-transition-group(calc-switcher) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(site-header),
+::view-transition-old(bottom-nav),
+::view-transition-old(calc-switcher) {
+  display: none;
+}
+::view-transition-new(site-header),
+::view-transition-new(bottom-nav),
+::view-transition-new(calc-switcher) {
+  animation: none;
+}
+/* active-tab pills glide to their new spot */
+::view-transition-group(tab-indicator),
+::view-transition-group(header-indicator),
+::view-transition-group(calc-indicator) {
+  animation-duration: var(--dur-page);
+  animation-timing-function: var(--ease-drawer);
+  z-index: 101;
+}
+/* tab labels ride above the gliding pill, as they do in the page, and cross-fade their colour */
+.vt-tab-label {
+  view-transition-class: tab-label;
+}
+::view-transition-group(.tab-label) {
+  animation-duration: var(--dur-page);
+  z-index: 102;
+}
+/* the footer fades with the page instead of jumping ahead of it to the new page's end */
+::view-transition-group(site-footer) {
+  animation: none;
+}
+::view-transition-old(site-footer) {
+  animation: var(--dur-out) var(--ease-exit) both fade-out;
+}
+::view-transition-new(site-footer) {
+  animation: var(--dur-in) var(--ease-enter) var(--dur-out) both fade-in;
+}
+/* shared axis (Material): the old page leaves the way the finger or the tab order points,
+   the new one follows from the other side; fades overlap only after the old one is mostly gone */
+::view-transition-old(.nav-forward),
+::view-transition-old(.nav-back) {
+  animation:
+    var(--dur-out) var(--ease-exit) both fade-out,
+    var(--dur-page) var(--ease-standard) both slide-out;
+}
+::view-transition-new(.nav-forward),
+::view-transition-new(.nav-back) {
+  animation:
+    var(--dur-in) var(--ease-enter) var(--dur-out) both fade-in,
+    var(--dur-page) var(--ease-standard) both slide-in;
+}
+::view-transition-old(.nav-forward),
+::view-transition-new(.nav-back) {
+  --slide: -48px;
+}
+::view-transition-new(.nav-forward),
+::view-transition-old(.nav-back) {
+  --slide: 48px;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes slide-in {
+  from {
+    translate: var(--slide) 0;
+  }
+}
+@keyframes slide-out {
+  to {
+    translate: var(--slide) 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* keep a short crossfade so the change still registers, drop all movement */
+  ::view-transition-old(.nav-forward),
+  ::view-transition-old(.nav-back),
+  ::view-transition-old(site-footer) {
+    animation: 120ms linear both fade-out;
+  }
+  ::view-transition-new(.nav-forward),
+  ::view-transition-new(.nav-back),
+  ::view-transition-new(site-footer) {
+    animation: 120ms linear both fade-in;
+  }
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+  }
+  .press:active:not(:disabled),
+  .press-soft:active,
+  .range:active::-webkit-slider-thumb,
+  .range:active::-moz-range-thumb {
+    transform: none;
+  }
+}
+
+/* ---------- toasts: drop in, leave upward; swipe handled in Toaster.tsx ---------- */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+    scale: 0.98;
+  }
+}
+.toast {
+  animation: toast-in var(--dur-base) var(--ease-enter);
+  transition:
+    opacity 200ms var(--ease-exit),
+    translate 200ms var(--ease-exit),
+    scale 200ms var(--ease-exit);
+}
+.toast[data-leaving] {
+  opacity: 0;
+  translate: 0 -8px;
+  scale: 0.98;
+}
+
+/* ---------- content a tap brought in: settles in place ---------- */
+@keyframes enter {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+.enter {
+  animation: enter 220ms var(--ease-enter);
+}
+/* the referral saving lights up when the switch turns it on, then fades to the card */
+@keyframes flash-pos {
+  from {
+    background-color: var(--pos-wash);
+    box-shadow: 0 0 0 0.5rem var(--pos-wash);
+  }
+}
+.flash-pos {
+  border-radius: 0.25rem;
+  animation: flash-pos 900ms var(--ease-standard);
+}
+
+/* ---------- popovers and icon swaps ---------- */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+    scale: 0.98;
+  }
+}
+.pop-in {
+  transform-origin: top center;
+  animation: pop-in var(--dur-fast) var(--ease-enter);
+}
+@keyframes icon-in {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+}
+.icon-in {
+  animation: icon-in var(--dur-base) var(--ease-enter);
+}
+
+/* ---------- disclosure: <details> opens to its height (interpolate-size), fades in ---------- */
+details::details-content {
+  block-size: 0;
+  overflow-y: clip;
+  opacity: 0;
+  transition:
+    block-size var(--dur-base) var(--ease-standard),
+    opacity var(--dur-base) var(--ease-standard),
+    content-visibility var(--dur-base) allow-discrete;
+}
+details[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+
+/* ---------- dialog: a sheet that rises from the bottom on phones, settles in the middle elsewhere ---------- */
+dialog.sheet {
+  --sheet-from: 16px;
+  opacity: 0;
+  translate: 0 var(--sheet-from);
+  transition:
+    opacity var(--dur-fast) var(--ease-exit),
+    translate var(--dur-fast) var(--ease-exit),
+    overlay var(--dur-fast) allow-discrete,
+    display var(--dur-fast) allow-discrete;
+}
+dialog.sheet[open] {
+  opacity: 1;
+  translate: 0 0;
+  transition-duration: var(--dur-slow);
+  transition-timing-function: var(--ease-drawer);
+}
+@starting-style {
+  dialog.sheet[open] {
+    opacity: 0;
+    translate: 0 var(--sheet-from);
+  }
+}
+@media (max-width: 639px) {
+  dialog.sheet {
+    --sheet-from: calc(100% + 2rem);
+  }
+}
+dialog.sheet::backdrop {
+  background-color: rgb(0 0 0 / 0);
+  transition:
+    background-color var(--dur-fast) var(--ease-exit),
+    overlay var(--dur-fast) allow-discrete,
+    display var(--dur-fast) allow-discrete;
+}
+dialog.sheet[open]::backdrop {
+  background-color: rgb(0 0 0 / 0.6);
+  transition-duration: var(--dur-base);
+}
+@starting-style {
+  dialog.sheet[open]::backdrop {
+    background-color: rgb(0 0 0 / 0);
+  }
+}
+
+/* ---------- first load only: the landing rises in, in reading order ---------- */
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+html:not([data-nav]) .rise {
+  animation: rise 500ms var(--ease-enter) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* the base layer's reduced-motion rule reaches elements, ::before and ::after only */
+@media (prefers-reduced-motion: reduce) {
+  details::details-content,
+  dialog.sheet::backdrop {
+    transition: none;
+  }
+}
+
+/* ---------- theme switch: the new palette spreads out from the toggle (useTheme.ts) ---------- */
+/* one snapshot of the whole page, so the fixed bars and pills change with everything else */
+html.theme-switch *,
+html.theme-switch *::before,
+html.theme-switch *::after {
+  view-transition-name: none !important;
+  transition: none !important;
+}
+html.theme-switch::view-transition-old(root) {
+  animation: none;
+}
+html.theme-switch::view-transition-new(root) {
+  animation: theme-reveal 560ms var(--ease-standard);
+}
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--reveal-x) var(--reveal-y));
+  }
+  to {
+    clip-path: circle(var(--reveal-r) at var(--reveal-x) var(--reveal-y));
+  }
+}
+html.theme-switch .theme-icon {
+  animation: theme-icon 400ms var(--ease-enter);
+}
+@keyframes theme-icon {
+  from {
+    opacity: 0;
+    rotate: -90deg;
+    scale: 0.6;
+  }
+}
+/* bars fill in after the copy has landed */
+@keyframes grow-x {
+  from {
+    scale: 0 1;
+  }
+}
+html:not([data-nav]) .grow-x {
+  transform-origin: left;
+  animation: grow-x 700ms var(--ease-enter) both;
+  animation-delay: calc(var(--i, 0) * 80ms);
+}
