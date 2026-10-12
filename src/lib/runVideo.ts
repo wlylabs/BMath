@@ -17,7 +17,12 @@ export const VIDEO = { width: 1920, height: 1080, fps: 30, seconds: 8 } as const
 
 export interface VideoRun {
   entrySol: number;
-  days: { reward: number; total: number; event: DayEvent }[];
+  /** The run's steps in order: days of a simulated run, or slices of the real chart since launch. */
+  steps: { reward: number; total: number; event: DayEvent; mcapUsd: number; x: number }[];
+  /** Bars of daily rewards for a simulated run; the market cap line for the real chart. */
+  chart: 'bars' | 'line';
+  /** The all-time high from the candles' highs, which the line of closes can fall short of. */
+  athUsd?: number;
   rank: { name: string; bg: string; fg: string };
   symbol: string;
   name: string;
@@ -25,7 +30,14 @@ export interface VideoRun {
   url: string;
   text: {
     hookLine: string;
-    day: (d: number, n: number) => string;
+    /** The chart card's title for the step reached (1-based; 0 before the first). */
+    progress: (i: number, n: number) => string;
+    /** The line chart's own title, above it. */
+    chartTitle: string;
+    mcap: (usd: number) => string;
+    buy: string;
+    now: string;
+    ath: string;
     bigDay: string;
     slowDay: string;
     rankLabel: string;
@@ -186,10 +198,120 @@ function watermark(ctx: CanvasRenderingContext2D, v: VideoRun, onDark: boolean) 
   ctx.restore();
 }
 
+/**
+ * The market cap since launch, drawn as far as the run has got: a log-scale line with the area
+ * under it, your buy marked at the start, the head carrying today's value, the high and now at
+ * the end.
+ */
+function drawLine(
+  ctx: CanvasRenderingContext2D,
+  v: VideoRun,
+  shown: number,
+  t: number,
+  box: { x: number; y: number; w: number; h: number },
+  cx: number,
+  cy: number,
+  cw: number,
+  step: number,
+) {
+  const pts = v.steps;
+  const n = pts.length;
+  const lo = Math.log(Math.max(1, Math.min(...pts.map((p) => p.mcapUsd))) * 0.85);
+  const hi = Math.log(Math.max(...pts.map((p) => p.mcapUsd)) * 1.12);
+  const X = (p: { x: number }) => box.x + p.x * box.w;
+  const Y = (mcap: number) => box.y + box.h - ((Math.log(Math.max(1, mcap)) - lo) / (hi - lo || 1)) * box.h;
+
+  // title, and the value the head is at
+  mono(ctx, 30, 600);
+  ctx.fillStyle = C.ink;
+  ctx.fillText(v.text.chartTitle, cx + 40, cy + 66);
+  const head = step > 0 ? pts[Math.min(n, step) - 1]! : pts[0]!;
+  ctx.fillStyle = C.muted;
+  mono(ctx, 28, 500);
+  ctx.textAlign = 'right';
+  ctx.fillText(v.text.progress(step, n), cx + cw - 40, cy + 66);
+  ctx.textAlign = 'left';
+  display(ctx, 84);
+  ctx.fillStyle = C.ink;
+  ctx.fillText(v.text.mcap(head.mcapUsd), cx + 36, cy + 152);
+
+  // grid: three faint lines
+  ctx.fillStyle = C.line;
+  for (let k = 1; k <= 3; k++) ctx.fillRect(box.x, box.y + (box.h * k) / 4, box.w, 2);
+
+  // the line so far, the last segment drawn part of the way
+  const full = Math.min(n - 1, Math.floor(shown));
+  const frac = shown - Math.floor(shown);
+  const path: [number, number][] = [];
+  for (let i = 0; i <= full; i++) path.push([X(pts[i]!), Y(pts[i]!.mcapUsd)]);
+  if (full < n - 1 && frac > 0 && shown >= 1) {
+    const a = pts[full]!;
+    const b = pts[full + 1]!;
+    path.push([X(a) + (X(b) - X(a)) * frac, Y(a.mcapUsd) + (Y(b.mcapUsd) - Y(a.mcapUsd)) * frac]);
+  }
+  const base = box.y + box.h;
+  if (t >= 1 && path.length > 1) {
+    ctx.beginPath();
+    ctx.moveTo(path[0]![0], base);
+    for (const [x, y] of path) ctx.lineTo(x, y);
+    ctx.lineTo(path.at(-1)![0], base);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(42, 167, 160, 0.16)';
+    ctx.fill();
+    ctx.beginPath();
+    path.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.lineWidth = 6;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = C.teal;
+    ctx.stroke();
+  }
+  ctx.fillStyle = C.ink;
+  ctx.fillRect(box.x, base, box.w, 5);
+
+  // your buy, at the start
+  const start = pts[0]!;
+  dot(ctx, X(start), Y(start.mcapUsd), C.ink);
+  tag(ctx, `${v.text.buy} · ${v.text.mcap(start.mcapUsd)}`, X(start) + 18, Y(start.mcapUsd) - 74, 26, 'left', C.ink, C.surface);
+
+  // the head while it moves; the high and now once it is all in
+  if (t >= 1 && path.length > 1 && shown < n) {
+    const [hx, hy] = path.at(-1)!;
+    dot(ctx, hx, hy, C.sun);
+  }
+  if (shown >= n) {
+    let ath = pts[0]!;
+    for (const p of pts) if (p.mcapUsd > ath.mcapUsd) ath = p;
+    const end = pts[n - 1]!;
+    const pop = easeBack((t - 4.7) / 0.35);
+    if (ath !== end) {
+      dot(ctx, X(ath), Y(ath.mcapUsd), C.sun);
+      ctx.globalAlpha = clamp01(pop);
+      const above = Y(ath.mcapUsd) - 66 > box.y - 20;
+      tag(ctx, `${v.text.ath} ${v.text.mcap(v.athUsd ?? ath.mcapUsd)}`, Math.min(X(ath) + 18, box.x + box.w - 280), above ? Y(ath.mcapUsd) - 66 : Y(ath.mcapUsd) + 22, 26, 'left', C.sun, C.ink);
+      ctx.globalAlpha = 1;
+    }
+    dot(ctx, X(end), Y(end.mcapUsd), C.teal);
+    ctx.globalAlpha = clamp01(pop);
+    tag(ctx, `${v.text.now} ${v.text.mcap(end.mcapUsd)}`, X(end) - 12, Math.min(Y(end.mcapUsd) + 26, base - 60), 26, 'right', C.ink, C.surface);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function dot(ctx: CanvasRenderingContext2D, x: number, y: number, fill: string) {
+  ctx.beginPath();
+  ctx.arc(x, y, 13, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = C.ink;
+  ctx.stroke();
+}
+
 /** Draws the frame at `time` seconds. */
 export function drawFrame(ctx: CanvasRenderingContext2D, time: number, v: VideoRun) {
   const { width: W, height: H } = VIDEO;
-  const n = v.days.length;
+  const n = v.steps.length;
   const outro = outroAt(time);
   // the last quarter second shows the hook again under the fading outro, so the loop is seamless
   const t = time >= 7.75 ? 0 : time;
@@ -214,29 +336,32 @@ export function drawFrame(ctx: CanvasRenderingContext2D, time: number, v: VideoR
 
   // left: the hook, then the answer
   const L = 90;
+  // the real chart is the point of its video, so it takes more of the frame
+  const wide = v.chart === 'line';
+  const big = wide ? 124 : 150;
   mono(ctx, 30, 500);
   ctx.fillStyle = C.ink2;
   ctx.fillText(v.text.hookLine, L, 270);
-  display(ctx, 150);
+  display(ctx, big);
   ctx.fillStyle = C.ink;
   ctx.fillText(`${fmtSol(v.entrySol).replace(/\.?0+$/, '')} SOL →`, L - 4, 420);
 
   const shown = daysAt(t, n);
   const whole = Math.min(n, Math.floor(shown));
-  const current = whole > 0 ? v.days[whole - 1]! : null;
+  const current = whole > 0 ? v.steps[whole - 1]! : null;
   if (t < 1) {
     // the question: a blinking "?" on a sun block
     const on = Math.floor(t * 4) % 2 === 0;
-    display(ctx, 150);
+    display(ctx, big);
     const qw = ctx.measureText('?').width;
     ctx.fillStyle = on ? C.sun : C.bg;
-    ctx.fillRect(L - 4, 452, qw + 48, 150);
+    ctx.fillRect(L - 4, 576 - big * 0.83, qw + 48, big);
     ctx.fillStyle = C.ink;
     ctx.fillText('?', L + 20, 576);
     ctx.fillText('SOL', L + qw + 80, 576);
   } else {
-    const value = t >= 5 ? v.days[n - 1]!.total : (current?.total ?? 0);
-    display(ctx, 150);
+    const value = t >= 5 ? v.steps[n - 1]!.total : (current?.total ?? 0);
+    display(ctx, big);
     ctx.fillStyle = C.pos;
     ctx.fillText(`${fmtSol(value)} SOL`, L - 4, 576);
   }
@@ -244,7 +369,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, time: number, v: VideoR
   // left, below: the rank, a dashed "rank ?" until it pops in
   const rx = L;
   const ry = 640;
-  const rw = 770;
+  const rw = wide ? 590 : 770;
   const rh = 260;
   if (t < 5) {
     ctx.setLineDash([20, 14]);
@@ -269,49 +394,52 @@ export function drawFrame(ctx: CanvasRenderingContext2D, time: number, v: VideoR
     ctx.fillText(v.text.rankLabel, rx + 36, ry + 54);
     display(ctx, 96);
     ctx.fillText(fit(ctx, v.rank.name, rw - 72), rx + 32, ry + 142);
-    mono(ctx, 28, 500);
-    ctx.fillText(v.text.payback, rx + 36, ry + 196);
-    ctx.fillText(v.text.share, rx + 36, ry + 236);
+    mono(ctx, wide ? 25 : 28, 500);
+    ctx.fillText(fit(ctx, v.text.payback, rw - 72), rx + 36, ry + 196);
+    ctx.fillText(fit(ctx, v.text.share, rw - 72), rx + 36, ry + 236);
     ctx.restore();
   }
 
   // right: the days
-  const cx = 950;
+  const cx = wide ? 740 : 950;
   const cy = 210;
   const cw = W - 90 - 12 - cx;
   const ch = 690;
   card(ctx, cx, cy, cw, ch, C.surface);
-  mono(ctx, 32, 600);
-  ctx.fillStyle = C.ink;
-  ctx.fillText(v.text.day(Math.max(t < 1 ? 0 : 1, Math.ceil(Math.min(shown, n))), n), cx + 40, cy + 70);
-
+  const step = Math.max(t < 1 ? 0 : 1, Math.ceil(Math.min(shown, n)));
   const bx = cx + 40;
   const by = cy + ch - 120;
   const bw = cw - 80;
-  const bh = 440;
-  const max = Math.max(...v.days.map((d) => d.reward), 1e-12);
-  const gap = n > 40 ? 2 : 6;
-  const barW = (bw - gap * (n - 1)) / n;
-  for (let i = 0; i < n; i++) {
-    const d = v.days[i]!;
-    // the newest bar grows in; a big day overshoots a touch
-    const grow = d.event === 'big' ? easeBack(shown - i) : easeOut(shown - i);
-    if (grow <= 0) {
-      ctx.fillStyle = C.line;
-      ctx.fillRect(bx + i * (barW + gap), by - 6, barW, 6);
-      continue;
+  if (v.chart === 'line') drawLine(ctx, v, shown, t, { x: bx, y: cy + 190, w: bw, h: by - cy - 190 }, cx, cy, cw, step);
+  else {
+    mono(ctx, 32, 600);
+    ctx.fillStyle = C.ink;
+    ctx.fillText(v.text.progress(step, n), cx + 40, cy + 70);
+    const bh = 440;
+    const max = Math.max(...v.steps.map((d) => d.reward), 1e-12);
+    const gap = n > 40 ? 2 : 6;
+    const barW = (bw - gap * (n - 1)) / n;
+    for (let i = 0; i < n; i++) {
+      const d = v.steps[i]!;
+      // the newest bar grows in; a big day overshoots a touch
+      const grow = d.event === 'big' ? easeBack(shown - i) : easeOut(shown - i);
+      if (grow <= 0) {
+        ctx.fillStyle = C.line;
+        ctx.fillRect(bx + i * (barW + gap), by - 6, barW, 6);
+        continue;
+      }
+      const h = Math.max(8, (d.reward / max) * bh) * grow;
+      ctx.fillStyle = d.event === 'big' ? C.sun : d.event === 'quiet' ? C.lineStrong : C.teal;
+      ctx.fillRect(bx + i * (barW + gap), by - h, barW, h);
     }
-    const h = Math.max(8, (d.reward / max) * bh) * grow;
-    ctx.fillStyle = d.event === 'big' ? C.sun : d.event === 'quiet' ? C.lineStrong : C.teal;
-    ctx.fillRect(bx + i * (barW + gap), by - h, barW, h);
-  }
-  ctx.fillStyle = C.ink;
-  ctx.fillRect(bx, by, bw, 5);
+    ctx.fillStyle = C.ink;
+    ctx.fillRect(bx, by, bw, 5);
 
-  // a big or slow day gets a call-out while it is the newest
-  if (t >= 1 && t < 5.2 && current?.event) {
-    const big = current.event === 'big';
-    tag(ctx, big ? v.text.bigDay : v.text.slowDay, bx, by + 32, 30, 'left', big ? C.sun : C.lineStrong, C.ink);
+    // a big or slow day gets a call-out while it is the newest
+    if (t >= 1 && t < 5.2 && current?.event) {
+      const big = current.event === 'big';
+      tag(ctx, big ? v.text.bigDay : v.text.slowDay, bx, by + 32, 30, 'left', big ? C.sun : C.lineStrong, C.ink);
+    }
   }
 
   // footer

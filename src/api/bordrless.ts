@@ -17,6 +17,7 @@ export interface ApiLaunch {
   image: string | null;
   status: 'curve' | 'graduated';
   createdAt: number;
+  graduatedAt?: number | null;
   priceQuote: number | null;
   priceUsd: number | null;
   mcapUsd: number | null;
@@ -52,6 +53,8 @@ export interface Launch {
   image: string | null;
   status: 'curve' | 'graduated';
   createdAt: number;
+  /** Unix seconds; null while the launch is on its curve. */
+  graduatedAt: number | null;
   priceUsd: number | null;
   priceSol: number | null;
   mcapUsd: number | null;
@@ -116,6 +119,7 @@ export function toLaunch(a: ApiLaunch, fetchedAt: number): Launch {
     image: a.image,
     status: a.status,
     createdAt: a.createdAt,
+    graduatedAt: a.graduatedAt ?? null,
     priceUsd: a.priceUsd,
     priceSol: a.priceQuote,
     mcapUsd: a.mcapUsd,
@@ -178,6 +182,22 @@ export async function getLaunch(mint: string, signal?: AbortSignal): Promise<Lau
     if ((e as Error).message === 'Bordrless API 404') return null;
     throw e;
   }
+}
+
+/** One 5-minute bucket of a launch's trades: price in USD per token, volume in USD. */
+export interface Candle {
+  t: number;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v: number;
+}
+
+/** A launch's trading history since it opened, oldest first; buckets without trades are left out. */
+export async function getCandles(mint: string, signal?: AbortSignal): Promise<Candle[]> {
+  const data = await get<{ candles: Candle[] }>(`/launches/${encodeURIComponent(mint)}/candles`, null, signal);
+  return (data.candles ?? []).filter((c) => Number.isFinite(c.t) && Number.isFinite(c.c) && c.c > 0).sort((a, b) => a.t - b.t);
 }
 
 /** SOL's dollar price and the platform's totals. */
