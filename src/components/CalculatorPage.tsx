@@ -1,9 +1,10 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { t } from '../lib/copy';
 import { cx } from '../lib/cx';
-import { CALCULATOR_KEYS, ROUTES, type CalculatorKey } from '../lib/routes';
+import { CALCULATOR_KEYS, LAST_CALCULATOR_KEY, ROUTES, type CalculatorKey } from '../lib/routes';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { UrlCleaner } from './UrlCleaner';
 import { NavLink } from './NavLink';
 import { SwipeNav } from './SwipeNav';
@@ -14,6 +15,9 @@ import { SwipeNav } from './SwipeNav';
  */
 export function CalculatorPage({ active, children }: { active: CalculatorKey; children: ReactNode }) {
   const page = t.calc.pages[active];
+  const [, setLast] = usePersistentState<string>(LAST_CALCULATOR_KEY, ROUTES.fee);
+  // the dock's Calculators tile comes back here
+  useEffect(() => setLast(ROUTES[active]), [active, setLast]);
   return (
     <SwipeNav className="mx-auto max-w-[1360px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8 lg:pb-16">
       <UrlCleaner />

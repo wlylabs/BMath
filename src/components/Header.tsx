@@ -17,7 +17,7 @@ export const SECTION_TONE = {
   profit: { text: 'text-orange', bar: 'bg-orange' },
   earn: { text: 'text-teal', bar: 'bg-teal' },
   halflife: { text: 'text-plum', bar: 'bg-plum' },
-  play: { text: 'text-sun-shade', bar: 'bg-sun' },
+  play: { text: 'text-orange', bar: 'bg-orange' },
   methodology: { text: 'text-sun-shade', bar: 'bg-sun' },
   faq: { text: 'text-spot', bar: 'bg-spot' },
 } as const;
