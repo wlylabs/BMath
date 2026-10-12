@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server';
 
 /**
- * Same-origin proxy to bordrless.app's public API, which sends no CORS headers. Only the three
+ * Same-origin proxy to bordrless.app's public API, which sends no CORS headers. Only the four
  * read endpoints BMath uses pass; answers are cached for a minute here and on the CDN, so a busy
  * page costs Bordrless one request a minute per URL.
  */
 const UPSTREAM = 'https://bordrless.app/api';
 const TTL = 60;
-const ALLOWED = [/^overview$/, /^launches$/, /^launches\/[1-9A-HJ-NP-Za-km-z]{32,44}$/];
+const ALLOWED = [/^overview$/, /^launches$/, /^launches\/[1-9A-HJ-NP-Za-km-z]{32,44}$/, /^launches\/[1-9A-HJ-NP-Za-km-z]{32,44}\/candles$/];
 const QUERY_KEYS = new Set(['q', 'sort', 'limit', 'offset']);
 
 function json(body: unknown, status: number, cache: string) {
