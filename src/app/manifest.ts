@@ -33,6 +33,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { name: 'Trade fee', short_name: 'Fee', description: 'Every cut of one Bordrless trade', url: ROUTES.fee, icons: ICON },
       { name: 'Profit & target', short_name: 'Profit', description: 'Net profit and break-even on the curve', url: ROUTES.profit, icons: ICON },
       { name: 'Creator & holders', short_name: 'Earn', description: 'What a day of volume pays', url: ROUTES.earn, icons: ICON },
+      { name: 'Half-Life exit fee', short_name: 'Half-Life', description: 'Sell now or wait', url: ROUTES.halflife, icons: ICON },
     ],
     screenshots: [
       {

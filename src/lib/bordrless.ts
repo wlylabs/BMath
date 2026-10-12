@@ -1,72 +1,82 @@
 /**
- * Bordrless launch-pool math, ported from the public SDK
- * (github.com/BordrlessDex/bordrless-sdk, packages/shared/src/policy.ts, Apache-2.0) so the
- * numbers here match what the programs charge, lamport for lamport. Integer math runs in
- * bigint with the programs' rounding; the helpers at the bottom wrap it in plain numbers for
- * the calculators. bordrless.test.ts replays the SDK's own swap vectors against it.
+ * Bordrless launch-pool math. The integer core comes straight from the official
+ * `@bordrless/shared` package (github.com/BordrlessDex/bordrless-sdk, Apache-2.0), which mirrors
+ * the programs' `crates/bordrless-core` bit for bit; this file adds what the package leaves out
+ * (a token hook's cut on a sell, such as Half-Life's exit fee) and plain-number wrappers for the
+ * calculators. bordrless.test.ts replays the 440 swap vectors the programs' tests publish.
  */
+import {
+  BPS,
+  CURVE_BPS,
+  curveOutput,
+  curveParams as sharedCurveParams,
+  HALF_LIFE,
+  halfLifeFeePpm,
+  LAUNCH_FEE_LAMPORTS,
+  LAUNCH_PROTOCOL_SHARE_BPS,
+  launchAfterSwap,
+  launchBeforeSwap,
+  LP_FEE_BPS,
+  MAX_CREATOR_FEE_BPS,
+  MAX_VIRTUAL_QUOTE,
+  MIN_VIRTUAL_QUOTE,
+  OPENING_MCAP_USD,
+  feeAmount,
+  protocolShare,
+  quoteLaunchSwap,
+  quoteValue,
+  RULE_BOUNDS,
+  RULE_PRESETS,
+  sideFeeBps,
+  sniperLpFee,
+  SNIPER_START_BPS,
+  SNIPER_WINDOW_SECS,
+  TOKEN_DECIMALS,
+  TOKEN_SUPPLY,
+  virtualQuoteForUsd,
+  type LaunchFeeParams,
+  type LaunchSwap,
+  type Reserves,
+} from '@bordrless/shared';
+
+export {
+  BPS,
+  CURVE_BPS,
+  curveOutput,
+  feeAmount,
+  HALF_LIFE,
+  halfLifeFeePpm,
+  LAUNCH_PROTOCOL_SHARE_BPS,
+  LP_FEE_BPS,
+  MAX_CREATOR_FEE_BPS,
+  MAX_VIRTUAL_QUOTE,
+  MIN_VIRTUAL_QUOTE,
+  OPENING_MCAP_USD,
+  protocolShare,
+  quoteLaunchSwap,
+  quoteValue,
+  RULE_BOUNDS,
+  sideFeeBps,
+  SNIPER_START_BPS,
+  SNIPER_WINDOW_SECS,
+  TOKEN_DECIMALS,
+  TOKEN_SUPPLY,
+};
+export type { LaunchFeeParams, LaunchSwap, Reserves };
 
 export type Side = 'buy' | 'sell';
+export type SwapFailure = NonNullable<LaunchSwap['failure']>;
 
-export const BPS = 10_000n;
 /** Lamports per SOL; bridged SOL has 9 decimals. */
 export const LAMPORTS = 1_000_000_000;
-/** Decimals of a launched token. */
-export const TOKEN_DECIMALS = 6;
-/** Every launch mints one billion tokens. */
-export const TOKEN_SUPPLY = 1_000_000_000n * 1_000_000n;
-/** 75% of the supply is sold on the curve; the rest is kept for graduation. */
-export const CURVE_BPS = 7_500n;
-/** The launch pool's LP fee outside the sniper window. */
-export const LP_FEE_BPS = 30;
-/** Flat protocol fee of an ordinary (non-launch) DEX pool, on the quote side. */
-export const PROTOCOL_FEE_BPS = 100;
-/** Bordrless takes a quarter of what a launch's rules collect (creator fee and holder rewards). */
-export const LAUNCH_PROTOCOL_SHARE_BPS = 2_500;
-/** The largest creator fee a launch may pick. */
-export const MAX_CREATOR_FEE_BPS = 200;
-/** Seconds after launch during which the LP fee is raised against snipers. */
-export const SNIPER_WINDOW_SECS = 30;
-/** The LP fee at second zero, falling linearly to LP_FEE_BPS. */
-export const SNIPER_START_BPS = 8_000;
-/** Paid by the creator at launch. */
-export const LAUNCH_FEE_SOL = 0.01;
-/** The dollar market cap every launch opens at. */
-export const OPENING_MCAP_USD = 5_000;
-/** Bounds of the virtual SOL reserve a launch may open with, in lamports. */
-export const MIN_VIRTUAL_QUOTE = 1_000_000_000n;
-export const MAX_VIRTUAL_QUOTE = 10_000_000_000_000n;
-/** Holder rewards are paid only while holders hold at least a thousandth of the supply. */
+/** Paid by the creator at launch, in SOL. */
+export const LAUNCH_FEE_SOL = Number(LAUNCH_FEE_LAMPORTS) / LAMPORTS;
+/** Holder rewards are paid only while holders hold at least a thousandth of the supply (the kit's `min_eligible`). */
 export const MIN_ELIGIBLE = TOKEN_SUPPLY / 1_000n;
-/** Policy caps on token rules, per side. */
-export const RULE_BOUNDS = { maxHolderFeeBps: 200, maxBurnBps: 100, maxRulesFeeBps: 300 } as const;
-/** Half-Life: the exit fee starts at 20% and halves every six hours held, gone after two days. */
-export const HALF_LIFE_MAX_PPM = 200_000;
-export const HALF_LIFE_SECS = 21_600;
-export const HALF_LIFE_ZERO_AFTER = 8;
-/** What a companion pays whoever sends one of its steps, as a share of what the step moves. */
+/** What a companion pays whoever sends one of its steps, as a share of what the step moves (docs/companions.md). */
 export const COMPANION_BOUNTY_BPS = 50;
-
-export function mulDivFloor(a: bigint, b: bigint, d: bigint): bigint {
-  if (d === 0n) throw new RangeError('division by zero');
-  return (a * b) / d;
-}
-
-export function mulDivCeil(a: bigint, b: bigint, d: bigint): bigint {
-  if (d === 0n) throw new RangeError('division by zero');
-  const p = a * b;
-  return p % d === 0n ? p / d : p / d + 1n;
-}
-
-/** A fee of `bps` on `amount`, rounded up. */
-export function feeAmount(amount: bigint, bps: number | bigint): bigint {
-  return mulDivCeil(amount, BigInt(bps), BPS);
-}
-
-/** Bordrless's share of what the hooks cut, rounded up. */
-export function protocolShare(value: bigint, shareBps: number): bigint {
-  return feeAmount(value, shareBps);
-}
+/** Parts per million, Half-Life's unit. */
+const PPM = 1_000_000n;
 
 // ---------------------------------------------------------------------------------------------
 // Rules
@@ -85,13 +95,18 @@ export const NO_RULES: Readonly<Rules> = { creatorFeeBps: 0, holderFeeBuyBps: 0,
 
 export type PresetId = 'plain' | 'diamond-hands' | 'burn' | 'paid-to-hold';
 
-/** The launch form's presets, as the SDK lists them (RULE_PRESETS). */
-export const PRESETS: readonly { id: PresetId; name: string; rules: Rules }[] = [
-  { id: 'plain', name: 'Plain', rules: { ...NO_RULES, creatorFeeBps: 100 } },
-  { id: 'diamond-hands', name: 'Diamond hands', rules: { ...NO_RULES, creatorFeeBps: 50, holderFeeBuyBps: 100, holderFeeSellBps: 100 } },
-  { id: 'burn', name: 'Burn', rules: { creatorFeeBps: 50, holderFeeBuyBps: 50, holderFeeSellBps: 50, burnBuyBps: 50, burnSellBps: 50 } },
-  { id: 'paid-to-hold', name: 'Paid to hold', rules: { ...NO_RULES, creatorFeeBps: 50, holderFeeSellBps: 200 } },
-];
+/** The launch form's presets, read from the package's RULE_PRESETS (only the fields that move money). */
+export const PRESETS: readonly { id: PresetId; name: string; rules: Rules }[] = RULE_PRESETS.map((p) => ({
+  id: p.slug as PresetId,
+  name: p.name,
+  rules: {
+    creatorFeeBps: p.creatorFeeBps,
+    holderFeeBuyBps: p.rules.holderFeeBuyBps,
+    holderFeeSellBps: p.rules.holderFeeSellBps,
+    burnBuyBps: p.rules.burnBuyBps,
+    burnSellBps: p.rules.burnSellBps,
+  },
+}));
 
 export function presetRules(id: PresetId): Rules {
   return (PRESETS.find((p) => p.id === id) ?? PRESETS[0]!).rules;
@@ -114,188 +129,113 @@ export function rulesProblem(r: Rules): 'creator' | 'holders' | 'burn' | 'total'
 }
 
 // ---------------------------------------------------------------------------------------------
-// One swap on a launch pool (SDK quoteLaunchSwap)
+// A sell with a token hook's cut (Half-Life), which quoteLaunchSwap leaves out
 // ---------------------------------------------------------------------------------------------
 
-export interface Reserves {
-  baseReserve: bigint;
-  quoteReserve: bigint;
-  virtualBase: bigint;
-  virtualQuote: bigint;
-}
-
-export interface LaunchFeeParams extends Rules {
-  /** Tokens held by holders who can earn rewards, before the trade. */
-  eligible: bigint;
-  /** Rewards are paid only from this many eligible tokens up. */
-  minEligible: bigint;
-}
-
-export interface HookCut {
-  creatorFee: bigint;
-  holderFee: bigint;
-  burn: bigint;
-}
-
-export function creatorAndHolderFees(amount: bigint, creatorFeeBps: number, holderFeeBps: number, eligible: bigint, minEligible: bigint): { creatorFee: bigint; holderFee: bigint } {
-  const creatorFee = feeAmount(amount, creatorFeeBps);
-  const holderFee = holderFeeBps > 0 && eligible >= minEligible ? feeAmount(amount, holderFeeBps) : 0n;
-  if (creatorFee + holderFee >= amount) return { creatorFee: 0n, holderFee: 0n };
-  return { creatorFee, holderFee };
-}
-
-export function tradeBurn(amount: bigint, burnBps: number): bigint {
-  const burn = mulDivFloor(amount, BigInt(burnBps), BPS);
-  return burn < amount ? burn : 0n;
-}
-
-function beforeSwap(side: Side, amountIn: bigint, p: LaunchFeeParams): HookCut {
-  if (side === 'buy') return { ...creatorAndHolderFees(amountIn, p.creatorFeeBps, p.holderFeeBuyBps, p.eligible, p.minEligible), burn: 0n };
-  return { creatorFee: 0n, holderFee: 0n, burn: tradeBurn(amountIn, p.burnSellBps) };
-}
-
-function afterSwap(side: Side, amountOut: bigint, p: LaunchFeeParams): HookCut {
-  if (side === 'buy') return { creatorFee: 0n, holderFee: 0n, burn: tradeBurn(amountOut, p.burnBuyBps) };
-  return { ...creatorAndHolderFees(amountOut, p.creatorFeeBps, p.holderFeeSellBps, p.eligible, p.minEligible), burn: 0n };
-}
-
-export type SwapFailure = 'fees_exceed_input' | 'no_output' | 'insufficient_liquidity';
-
-export interface LaunchSwap {
-  creatorFee: bigint;
-  holderFee: bigint;
-  burn: bigint;
-  holderFeeOn: boolean;
-  received: bigint;
-  lpFee: bigint;
-  protocolFee: bigint;
-  netIn: bigint;
-  amountOut: bigint | null;
-  delivered: bigint | null;
-  failure: SwapFailure | null;
-}
-
-/** The constant-product output for `netIn` going into the curve, before the check against the real reserve. */
-export function curveOutput(r: Reserves, side: Side, netIn: bigint): bigint {
-  if (netIn <= 0n) return 0n;
-  return side === 'buy'
-    ? mulDivFloor(netIn, r.baseReserve + r.virtualBase, r.quoteReserve + r.virtualQuote + netIn)
-    : mulDivFloor(netIn, r.quoteReserve + r.virtualQuote, r.baseReserve + r.virtualBase + netIn);
+export interface LaunchSell extends LaunchSwap {
+  /** What the token hook took from the tokens on their way into the pool (Half-Life: to the furnace). */
+  tokenCut: bigint;
+  /** That cut's value in SOL at the swap's own price, which Bordrless takes its share of. */
+  tokenCutValue: bigint;
+  /** Bordrless's share of the token cut's value, in SOL (part of protocolFee). */
+  tokenCutShare: bigint;
 }
 
 /**
- * A swap on a launch pool in the DEX's order. A buy: creator and holder fees from the SOL in,
- * the LP fee and Bordrless's share on what reached the vault, the curve, then the burn from the
- * tokens out. A sell: the burn from the tokens in, the curve, the LP fee from the SOL out, then
- * the creator and holder fees and Bordrless's share from what is left.
+ * A sell on a launch pool whose token hook cuts `tokenCut` from the transfer into the pool, in the
+ * order of programs/bordrless_swap/src/instructions/swap.rs: the launch's burn from the tokens in,
+ * the token hook's cut from the transfer (so the pool receives what is left), the curve, then
+ * `swap_amounts_shared` (crates/bordrless-core): the LP fee and Bordrless's share of the cut's
+ * value (`quote_value(cut, out_gross, net_in)`) leave the curve's output; the launchpad's
+ * `after_swap` takes the creator and holder fees from what remains, and Bordrless's share of those
+ * is held back from the delivery. With `tokenCut` 0 this is exactly quoteLaunchSwap.
  */
-export function quoteLaunchSwap(r: Reserves, side: Side, amountIn: bigint, lpFeeBps: number, protocolShareBps: number, p: LaunchFeeParams): LaunchSwap {
-  const before = beforeSwap(side, amountIn, p);
-  const received = amountIn - before.creatorFee - before.holderFee - before.burn;
-  const eligibleAtFees = side === 'sell' ? (p.eligible > amountIn ? p.eligible - amountIn : 0n) : p.eligible;
-  const holderFeeOn = (side === 'buy' ? p.holderFeeBuyBps : p.holderFeeSellBps) > 0 && eligibleAtFees >= p.minEligible;
-  const buyLpFee = side === 'buy' ? feeAmount(received, lpFeeBps) : 0n;
-  const inputProtocolFee = side === 'buy' ? protocolShare(before.creatorFee + before.holderFee, protocolShareBps) : 0n;
-  const netIn = received - buyLpFee - inputProtocolFee;
-  const failed = (failure: SwapFailure, protocolFee = inputProtocolFee, carried: Partial<LaunchSwap> = {}): LaunchSwap => ({
-    ...before,
-    holderFeeOn,
-    received,
-    lpFee: buyLpFee,
-    protocolFee,
-    netIn,
-    amountOut: null,
-    delivered: null,
-    failure,
-    ...carried,
-  });
-  if (received <= 0n || netIn <= 0n) return failed('fees_exceed_input');
-  const out = curveOutput(r, side, netIn);
-  if (out <= 0n) return failed('no_output');
-  if (out > (side === 'buy' ? r.baseReserve : r.quoteReserve)) return failed('insufficient_liquidity');
-  if (side === 'buy') {
-    const after = afterSwap('buy', out, p);
-    return { ...before, burn: after.burn, holderFeeOn, received, lpFee: buyLpFee, protocolFee: inputProtocolFee, netIn, amountOut: out, delivered: out - after.burn, failure: null };
-  }
-  const lpFee = feeAmount(out, lpFeeBps);
-  if (lpFee >= out) return failed('no_output', 0n, { lpFee });
-  const told = out - lpFee;
-  const after = afterSwap('sell', told, { ...p, eligible: eligibleAtFees });
-  const protocolFee = protocolShare(after.creatorFee + after.holderFee, protocolShareBps);
-  if (after.creatorFee + after.holderFee + protocolFee >= told) {
-    return failed('no_output', protocolFee, { creatorFee: after.creatorFee, holderFee: after.holderFee, lpFee });
-  }
-  return {
-    creatorFee: after.creatorFee,
-    holderFee: after.holderFee,
+export function quoteLaunchSell(r: Reserves, amountIn: bigint, tokenCut: (transferred: bigint) => bigint, lpFeeBps: number, protocolShareBps: number, p: LaunchFeeParams): LaunchSell {
+  const before = launchBeforeSwap('sell', amountIn, p);
+  const transferred = amountIn - before.burn;
+  const cut = transferred > 0n ? tokenCut(transferred) : 0n;
+  const received = transferred - cut;
+  const eligibleAtFees = p.eligible > amountIn ? p.eligible - amountIn : 0n;
+  const holderFeeOn = p.holderFeeSellBps > 0 && eligibleAtFees >= p.minEligible;
+  const base: LaunchSell = {
+    creatorFee: 0n,
+    holderFee: 0n,
     burn: before.burn,
     holderFeeOn,
     received,
-    lpFee,
-    protocolFee,
-    netIn,
-    amountOut: out,
-    delivered: told - after.creatorFee - after.holderFee - protocolFee,
+    lpFee: 0n,
+    protocolFee: 0n,
+    netIn: received,
+    amountOut: null,
+    delivered: null,
     failure: null,
+    tokenCut: cut,
+    tokenCutValue: 0n,
+    tokenCutShare: 0n,
   };
+  if (received <= 0n) return { ...base, failure: 'fees_exceed_input' };
+  const out = curveOutput(r, 'sell', received);
+  if (out <= 0n) return { ...base, failure: 'no_output' };
+  if (out > r.quoteReserve) return { ...base, failure: 'insufficient_liquidity' };
+  return { ...base, ...sellAfterCurve(out, received, cut, lpFeeBps, protocolShareBps, { ...p, eligible: eligibleAtFees }) };
+}
+
+/**
+ * The rest of a launch-pool sell once the curve has given `out` lamports for the `received`
+ * tokens that reached the pool, `cut` of them having gone to a token hook: `swap_amounts_shared`
+ * (crates/bordrless-core/src/lib.rs) takes the LP fee and Bordrless's share of the cut's value from
+ * `out`; the launchpad's after_swap takes the creator and holder fees from what is left; the DEX
+ * holds back Bordrless's share of those (programs/bordrless_swap/src/instructions/swap.rs).
+ * `p.eligible` is the count once the seller's tokens have left.
+ */
+export function sellAfterCurve(out: bigint, received: bigint, cut: bigint, lpFeeBps: number, protocolShareBps: number, p: LaunchFeeParams) {
+  const lpFee = feeAmount(out, lpFeeBps);
+  const tokenCutValue = quoteValue(cut, out, received);
+  const tokenCutShare = protocolShare(tokenCutValue, protocolShareBps);
+  const none = { creatorFee: 0n, holderFee: 0n, lpFee, protocolFee: tokenCutShare, amountOut: out, tokenCutValue, tokenCutShare, delivered: null };
+  if (lpFee + tokenCutShare >= out) return { ...none, failure: 'no_output' as const };
+  const told = out - lpFee - tokenCutShare;
+  const after = launchAfterSwap('sell', told, p);
+  const heldBack = protocolShare(after.creatorFee + after.holderFee, protocolShareBps);
+  const done = { ...none, creatorFee: after.creatorFee, holderFee: after.holderFee, protocolFee: tokenCutShare + heldBack };
+  if (after.creatorFee + after.holderFee + heldBack >= told) return { ...done, failure: 'no_output' as const };
+  return { ...done, delivered: told - after.creatorFee - after.holderFee - heldBack, failure: null };
+}
+
+/** Half-Life's exit fee on `amount` tokens held `ageSecs`: the program's `fee_on`, rounded down. Unstamped tokens (age unknown) pay the full 20%. */
+export function halfLifeCut(amount: bigint, ageSecs: number | null): bigint {
+  const ppm = BigInt(ageSecs === null ? HALF_LIFE.maxFeePpm : halfLifeFeePpm(ageSecs));
+  const fee = (amount * ppm) / PPM;
+  return fee < amount ? fee : amount;
+}
+
+/**
+ * Half-Life's `blend` (programs/half_life/src/lib.rs): the arrival time of a holding of `balance`
+ * tokens that arrived at `since` once `added` tokens that arrived at `addedSince` join it, the
+ * average by weight, truncated toward zero like the program's integer division; an empty holding
+ * takes the new tokens' time. Bought tokens arrive "now"; sent tokens keep the sender's time.
+ */
+export function halfLifeBlend(balance: bigint, since: bigint, added: bigint, addedSince: bigint): bigint {
+  if (balance === 0n) return addedSince;
+  return (balance * since + added * addedSince) / (balance + added);
 }
 
 // ---------------------------------------------------------------------------------------------
 // The headline fee of one side (§7.3) and the time-based fees
 // ---------------------------------------------------------------------------------------------
 
-/**
- * The total fee of one side as one figure, rounded up to a basis point:
- * buy `1 - (1 - (creator + holders)(1 + s))(1 - lp)(1 - burn)`,
- * sell `1 - (1 - burn)(1 - lp)(1 - (creator + holders)(1 + s))`.
- * Plain (creator 1%, LP 0.3%, s = 25%) is 155 bps, which bordrless.app shows as 1.6%.
- */
-export function sideFeeBps(side: Side, f: { lpFeeBps: number; creatorFeeBps: number; holderFeeBps: number; burnBps: number; protocolShareBps?: number }): number {
-  const share = BigInt(f.protocolShareBps ?? LAUNCH_PROTOCOL_SHARE_BPS);
-  const cutsScaled = BigInt(f.creatorFeeBps + f.holderFeeBps) * (BPS + share);
-  const factors: [bigint, bigint][] = [
-    [BPS * BPS - cutsScaled, BPS * BPS],
-    [BPS - BigInt(f.lpFeeBps), BPS],
-    [BPS - BigInt(f.burnBps), BPS],
-  ];
-  let kept = 1n;
-  let scale = 1n;
-  for (const [n, d] of factors) {
-    if (n < 0n) throw new RangeError('a fee is between 0 and 100%');
-    kept *= n;
-    scale *= d;
-  }
-  // multiplication commutes, so a sell's order (burn first) gives the same figure
-  void side;
-  return Number(mulDivCeil(scale - kept, BPS, scale));
-}
-
-/** Both sides' headline fee for a set of rules, with holder rewards flowing or not. */
+/** Both sides' headline fee for a set of rules, as bordrless.app computes it (`sideFeeBps` with a 25% share). */
 export function headlineFees(r: Rules, lpFeeBps = LP_FEE_BPS, holdersOn = true): { buyBps: number; sellBps: number } {
+  const share = LAUNCH_PROTOCOL_SHARE_BPS;
   return {
-    buyBps: sideFeeBps('buy', { lpFeeBps, creatorFeeBps: r.creatorFeeBps, holderFeeBps: holdersOn ? r.holderFeeBuyBps : 0, burnBps: r.burnBuyBps }),
-    sellBps: sideFeeBps('sell', { lpFeeBps, creatorFeeBps: r.creatorFeeBps, holderFeeBps: holdersOn ? r.holderFeeSellBps : 0, burnBps: r.burnSellBps }),
+    buyBps: sideFeeBps('buy', { lpFeeBps, creatorFeeBps: r.creatorFeeBps, holderFeeBps: holdersOn ? r.holderFeeBuyBps : 0, burnBps: r.burnBuyBps, protocolShareBps: share }),
+    sellBps: sideFeeBps('sell', { lpFeeBps, creatorFeeBps: r.creatorFeeBps, holderFeeBps: holdersOn ? r.holderFeeSellBps : 0, burnBps: r.burnSellBps, protocolShareBps: share }),
   };
 }
 
-/** The LP fee `elapsed` seconds after launch: 80% at second zero, falling linearly to 0.3% at 30 s. */
+/** The LP fee `elapsed` seconds after launch (the package's `sniperLpFee` with the launch policy's window). */
 export function sniperLpFeeBps(elapsed: number, windowSecs = SNIPER_WINDOW_SECS, startBps = SNIPER_START_BPS, baseBps = LP_FEE_BPS): number {
-  if (windowSecs <= 0 || elapsed >= windowSecs || startBps <= baseBps) return baseBps;
-  const span = startBps - baseBps;
-  const fallen = Math.floor((span * Math.max(0, elapsed)) / windowSecs);
-  return startBps - Math.min(span, fallen);
-}
-
-/** Half-Life's exit fee in parts per million for tokens held `ageSecs`: halves every 6 h, linear inside each, zero from 48 h. */
-export function halfLifeFeePpm(ageSecs: number): number {
-  if (ageSecs <= 0) return HALF_LIFE_MAX_PPM;
-  const age = Math.floor(ageSecs);
-  const halvings = Math.floor(age / HALF_LIFE_SECS);
-  if (halvings >= HALF_LIFE_ZERO_AFTER) return 0;
-  const into = age % HALF_LIFE_SECS;
-  const hi = HALF_LIFE_MAX_PPM >> halvings;
-  const lo = HALF_LIFE_MAX_PPM >> (halvings + 1);
-  return hi - Math.floor(((hi - lo) * into) / HALF_LIFE_SECS);
+  return sniperLpFee(Math.max(0, elapsed), 0, windowSecs, startBps, baseBps);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -310,21 +250,16 @@ export interface CurveParams {
   graduationQuote: bigint;
 }
 
-/** The curve of a launch from the supply, the curve share and the virtual SOL it opens with. */
+/** The curve of a launch that opens with `virtualQuote` lamports of virtual SOL. */
 export function curveParams(virtualQuote: bigint, supply = TOKEN_SUPPLY, curveBps = CURVE_BPS): CurveParams {
-  const c = mulDivFloor(supply, curveBps, BPS);
-  const r = supply - c;
-  const diff = c - r;
-  return { curveTokens: c, reserveTokens: r, virtualQuote, virtualBase: mulDivFloor(c, r, diff), graduationQuote: mulDivFloor(virtualQuote, diff, r) };
+  const p = sharedCurveParams(supply, curveBps, virtualQuote);
+  if (!p) throw new RangeError('no curve for these parameters');
+  return p;
 }
 
 /** The virtual SOL that opens a curve at $5k for this SOL price, clamped like the backend does. */
 export function virtualQuoteForSolPrice(solUsd: number, mcapUsd = OPENING_MCAP_USD): bigint {
-  if (!(solUsd > 0)) throw new RangeError('SOL has no price');
-  const mcapLamports = BigInt(Math.round((mcapUsd / solUsd) * LAMPORTS));
-  const shape = curveParams(1n);
-  const vq = mulDivCeil(mcapLamports, shape.curveTokens + shape.virtualBase, TOKEN_SUPPLY);
-  return vq < MIN_VIRTUAL_QUOTE ? MIN_VIRTUAL_QUOTE : vq > MAX_VIRTUAL_QUOTE ? MAX_VIRTUAL_QUOTE : vq;
+  return virtualQuoteForUsd(solUsd, 9, mcapUsd);
 }
 
 /** Reserves of a brand-new launch. */
@@ -436,6 +371,8 @@ export interface TradeResult {
   /** Half-Life exit fee in tokens, and valued in SOL. */
   halfLifeTokens: number;
   halfLifeSol: number;
+  /** Bordrless's share of the Half-Life cut's value, in SOL; included in protocolFee. */
+  halfLifeShare: number;
   /** Every fee in SOL. */
   totalFeesSol: number;
   /** Price movement of the curve itself, fees excluded, in SOL. */
@@ -466,24 +403,25 @@ export function quoteTrade(input: TradeInput): TradeResult {
   const params: LaunchFeeParams = { ...rules, eligible: holdersOn ? TOKEN_SUPPLY : 0n, minEligible: MIN_ELIGIBLE };
   const price = spotPrice(reserves);
 
-  // Half-Life takes its fee from the tokens being sold, before they move, into the furnace
-  const hlPpm = side === 'sell' && input.halfLifeAgeSecs != null ? halfLifeFeePpm(input.halfLifeAgeSecs) : 0;
   const rawIn = side === 'buy' ? toLamports(input.amount) : toBaseUnits(input.amount);
-  const hlCut = hlPpm > 0 ? (rawIn * BigInt(hlPpm)) / 1_000_000n : 0n;
-  const swapIn = rawIn - hlCut;
-
-  const q = quoteLaunchSwap(reserves, side, swapIn, lpFeeBps, LAUNCH_PROTOCOL_SHARE_BPS, params);
+  const halfLife = side === 'sell' && input.halfLifeAgeSecs !== undefined && input.halfLifeAgeSecs !== null;
+  // Half-Life cuts its exit fee from the transfer into the pool; the DEX then takes its share of that cut's value
+  const q: LaunchSwap & Partial<LaunchSell> = halfLife
+    ? quoteLaunchSell(reserves, rawIn, (moved) => halfLifeCut(moved, input.halfLifeAgeSecs!), lpFeeBps, LAUNCH_PROTOCOL_SHARE_BPS, params)
+    : quoteLaunchSwap(reserves, side, rawIn, lpFeeBps, LAUNCH_PROTOCOL_SHARE_BPS, params);
   const ok = q.failure === null && q.delivered !== null;
   const creatorFee = fromLamports(q.creatorFee);
   const holderFee = fromLamports(q.holderFee);
   const lpFee = fromLamports(q.lpFee);
   const protocolFee = fromLamports(q.protocolFee);
+  const halfLifeShare = fromLamports(q.tokenCutShare ?? 0n);
   const burnTokens = fromBaseUnits(q.burn);
-  const halfLifeTokens = fromBaseUnits(hlCut);
+  const halfLifeTokens = fromBaseUnits(q.tokenCut ?? 0n);
 
   const valueSol = side === 'buy' ? input.amount : input.amount * price;
   const burnSol = burnTokens * price;
-  const halfLifeSol = halfLifeTokens * price;
+  // valued at the swap's own price, as the DEX values it for its share; spot until the swap lands
+  const halfLifeSol = q.tokenCutValue ? fromLamports(q.tokenCutValue) : halfLifeTokens * price;
   const feesSol = creatorFee + holderFee + lpFee + protocolFee + burnSol + halfLifeSol;
   const received = ok ? (side === 'buy' ? fromBaseUnits(q.delivered!) : fromLamports(q.delivered!)) : 0;
 
@@ -507,6 +445,7 @@ export function quoteTrade(input: TradeInput): TradeResult {
     burnSol,
     halfLifeTokens,
     halfLifeSol,
+    halfLifeShare,
     totalFeesSol: feesSol,
     impactSol,
     feeRate: valueSol > 0 ? feesSol / valueSol : 0,

@@ -1,10 +1,9 @@
-import { headlineFees, type Reserves, type Rules } from '../lib/bordrless';
+import { HALF_LIFE, headlineFees, type Reserves, type Rules } from '../lib/bordrless';
 
 /**
  * Bordrless's public API (the one bordrless.app itself reads). It sends no CORS headers, so the
- * browser reaches it through this site's own origin: a rewrite in vercel.json (and in
- * next.config.ts for `next dev`) forwards /api/bordrless/<path>/ to https://bordrless.app/api/<path>.
- * Set NEXT_PUBLIC_BORDRLESS_API to point somewhere else.
+ * browser reaches it through this site's own route handler (src/app/api/bordrless), which caches
+ * each answer for a minute. Set NEXT_PUBLIC_BORDRLESS_API to point somewhere else.
  */
 const BASE = process.env.NEXT_PUBLIC_BORDRLESS_API ?? '/api/bordrless';
 
@@ -31,7 +30,7 @@ interface ApiLaunch {
   sniperWindowEndsAt: number;
   rules: { holderFeeBuyBps: number; holderFeeSellBps: number; burnBuyBps: number; burnSellBps: number; maxWalletBps: number };
   preset: string | null;
-  customHook: unknown;
+  customHook: { program?: string } | null;
   buyFeeBps: number;
   sellFeeBps: number;
   baseReserve?: string;
@@ -65,7 +64,10 @@ export interface Launch {
   buyFeeBps: number;
   sellFeeBps: number;
   preset: string | null;
+  /** The launch runs a token hook of its creator's choosing (not the kit). */
   customHook: boolean;
+  /** That hook is Half-Life, Bordrless's own (programs/half_life). */
+  halfLife: boolean;
   reserves: { baseReserve: string; quoteReserve: string; virtualBase: string; virtualQuote: string } | null;
   graduationQuote: string | null;
   supply: string | null;
@@ -80,7 +82,7 @@ export interface Overview {
 }
 
 async function get<T>(path: string, query: URLSearchParams | null, signal?: AbortSignal): Promise<T> {
-  // the trailing slash keeps hosts that add one (trailingSlash) from redirecting before the rewrite
+  // with the trailing slash the site's own trailingSlash setting has nothing to redirect
   const res = await fetch(`${BASE}${path}/${query ? `?${query}` : ''}`, { signal, headers: { accept: 'application/json' } });
   if (!res.ok) throw new Error(`Bordrless API ${res.status}`);
   return (await res.json()) as T;
@@ -120,6 +122,7 @@ function toLaunch(a: ApiLaunch, fetchedAt: number): Launch {
     sellFeeBps: a.sellFeeBps,
     preset: a.preset,
     customHook: !!a.customHook,
+    halfLife: a.customHook?.program === HALF_LIFE.program,
     reserves: hasReserves
       ? { baseReserve: a.baseReserve!, quoteReserve: a.quoteReserve!, virtualBase: a.virtualBase ?? '0', virtualQuote: a.virtualQuote ?? '0' }
       : null,

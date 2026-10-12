@@ -85,7 +85,8 @@ export function FeeCalculator() {
   const lpNow = sniperLpFeeBps(elapsed);
   const inSniper = elapsed < SNIPER_WINDOW_SECS;
   const firstBuy = inSniper && s.side === 'buy' && s.firstBuy;
-  const halfLife = s.halfLife;
+  // a Half-Life token always charges its exit fee; otherwise the switch decides
+  const halfLife = launch?.halfLife || s.halfLife;
 
   const result = amountValid
     ? quoteTrade({
@@ -177,10 +178,10 @@ export function FeeCalculator() {
           {inSniper && s.side === 'buy' && (
             <Switch checked={s.firstBuy} onChange={(v) => set('firstBuy', v)} label={t.common.firstBuy} hint={t.common.firstBuyHint} />
           )}
-          {s.side === 'sell' && (
+          {s.side === 'sell' && !launch?.halfLife && (
             <Switch checked={s.halfLife} onChange={(v) => set('halfLife', v)} label={t.common.halfLife} hint={t.common.halfLifeHint} />
           )}
-          {s.side === 'sell' && s.halfLife && (
+          {s.side === 'sell' && halfLife && (
             <div className="enter px-1">
               <Field label={t.common.holdAge} htmlFor={ids.hold} aside={<span className="num text-sm font-semibold text-ink">{t.common.hours(s.holdHours)}</span>}>
                 <input
@@ -235,7 +236,7 @@ export function FeeCalculator() {
             <dl className="mt-5 divide-y divide-line border-t border-ink">
               {result.creatorFee > 0 && <Row label={t.fee.creator} value={sol(result.creatorFee)} />}
               {result.holderFee > 0 && <Row label={t.fee.holders} value={sol(result.holderFee)} />}
-              {result.protocolFee > 0 && <Row label={t.fee.share} value={sol(result.protocolFee)} sub={t.fee.shareSub} />}
+              {result.protocolFee > 0 && <Row label={t.fee.share} value={sol(result.protocolFee)} sub={result.halfLifeShare > 0 ? t.fee.shareSubHalfLife : t.fee.shareSub} />}
               <Row label={inSniper && !firstBuy ? t.fee.lpSniper : t.fee.lp} value={sol(result.lpFee)} sub={pct(result.lpFeeBps / 10_000)} tone={inSniper && !firstBuy ? 'neg' : undefined} />
               {result.burnTokens > 0 && <Row label={t.fee.burn} value={sol(result.burnSol)} sub={t.fee.burnSub(num(result.burnTokens, 0))} />}
               {result.halfLifeTokens > 0 && <Row label={t.fee.halfLife} value={sol(result.halfLifeSol)} sub={t.fee.halfLifeSub(num(result.halfLifeTokens, 0))} tone="neg" />}
@@ -255,7 +256,7 @@ export function FeeCalculator() {
             <div className="mt-4 space-y-2 empty:hidden">
               {inSniper && !firstBuy && <Notice tone="warn">{t.fee.sniperWarn(pct(lpNow / 10_000))}</Notice>}
               {launch && !launch.holdersOn && launch.rules.holderFeeBuyBps + launch.rules.holderFeeSellBps > 0 && <Notice>{t.lookup.holdersOff}</Notice>}
-              {launch?.customHook && <Notice tone="warn">{t.lookup.customHook}</Notice>}
+              {launch?.halfLife ? <Notice>{t.lookup.halfLife}</Notice> : launch?.customHook && <Notice tone="warn">{t.lookup.customHook}</Notice>}
               {launch && !live && <Notice>{t.lookup.noPool}</Notice>}
             </div>
             <details className="group mt-4 border-t border-line pt-3">

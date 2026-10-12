@@ -8,14 +8,14 @@ import { InstallButton } from './pwa/PwaProvider';
 import { PixelIcon } from './PixelIcon';
 
 export function Methodology() {
-  const blocks = [
+  const blocks: { id: string; title: string; body: string; note?: string }[] = [
     { id: 'order', title: t.method.orderTitle, body: t.method.orderBody },
     { id: 'fee', title: t.method.feeTitle, body: t.method.feeBody },
-    { id: 'share', title: t.method.shareTitle, body: t.method.shareBody },
+    { id: 'share', title: t.method.shareTitle, body: t.method.shareBody, note: t.method.shareSource },
     { id: 'sniper', title: t.method.sniperTitle, body: t.method.sniperBody },
     { id: 'holders', title: t.method.holdersTitle, body: t.method.holdersBody },
     { id: 'curve', title: t.method.curveTitle, body: t.method.curveBody },
-    { id: 'half-life', title: t.method.halfLifeTitle, body: t.method.halfLifeBody },
+    { id: 'half-life', title: t.method.halfLifeTitle, body: t.method.halfLifeBody, note: t.method.halfLifeSource },
     { id: 'limits', title: t.method.limitsTitle, body: t.method.limitsBody },
   ];
   return (
@@ -37,6 +37,7 @@ export function Methodology() {
               {b.title}
             </h2>
             <p className="mt-2 leading-relaxed text-ink-2">{b.body}</p>
+            {b.note && <p className="label mt-3 border-t border-line pt-2 text-muted">{b.note}</p>}
           </article>
         ))}
       </div>
@@ -96,13 +97,14 @@ export function Footer() {
     { href: ROUTES.fee, label: t.calc.tabs.fee },
     { href: ROUTES.profit, label: t.calc.tabs.profit },
     { href: ROUTES.earn, label: t.calc.tabs.earn },
+    { href: ROUTES.halflife, label: t.calc.tabs.halflife },
     { href: ROUTES.methodology, label: t.nav.method },
     { href: ROUTES.faq, label: t.nav.faq },
   ];
   return (
     <footer
       style={{ viewTransitionName: 'site-footer' }}
-      className="border-t-2 border-ink pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-10 lg:pb-10"
+      className="border-t-2 border-ink pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-10 xl:pb-10"
     >
       <div className="mx-auto grid max-w-[1360px] gap-8 px-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:gap-16">
         <div>

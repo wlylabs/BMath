@@ -81,7 +81,9 @@ export function ProfitCalculator() {
   const entryNowSol = live ? (launch?.mcapSol ?? 0) : entryMcapSol!;
   const exitMcapSol = s.exitMode === 'multiple' ? (multValid ? entryNowSol * mult : NaN) : exitValid ? exitUsd / solUsd : NaN;
   const ready = amountValid && Number.isFinite(exitMcapSol) && exitMcapSol > 0 && (live ? true : entryValid);
-  const halfLifeHours = s.halfLife ? s.holdHours : null;
+  // a Half-Life token always charges its exit fee; otherwise the switch decides
+  const halfLife = launch?.halfLife || s.halfLife;
+  const halfLifeHours = halfLife ? s.holdHours : null;
 
   const result = ready ? roundTrip({ pool, amount, entryMcap: entryMcapSol, exitMcap: exitMcapSol, rules, holdersOn, halfLifeHours }) : null;
   const be = ready ? breakEvenMcap({ pool, amount, entryMcap: entryMcapSol, rules, holdersOn, halfLifeHours }) : null;
@@ -145,8 +147,8 @@ export function ProfitCalculator() {
           {!launch && rules.holderFeeBuyBps + rules.holderFeeSellBps > 0 && (
             <Switch checked={s.holdersOn} onChange={(v) => set('holdersOn', v)} label={t.common.holdersOn} hint={t.common.holdersOnHint} />
           )}
-          <Switch checked={s.halfLife} onChange={(v) => set('halfLife', v)} label={t.common.halfLife} hint={t.common.halfLifeHint} />
-          {s.halfLife && (
+          {!launch?.halfLife && <Switch checked={s.halfLife} onChange={(v) => set('halfLife', v)} label={t.common.halfLife} hint={t.common.halfLifeHint} />}
+          {halfLife && (
             <div className="enter px-1">
               <Field label={t.common.holdAge} htmlFor={ids.hold} aside={<span className="num text-sm font-semibold text-ink">{t.common.hours(s.holdHours)}</span>}>
                 <input
@@ -213,7 +215,7 @@ export function ProfitCalculator() {
               <Row label={t.profit.spent} value={sol(amount)} sub={`${t.common.mcap} ${$(result.entryMcap)}`} />
               <Row label={t.profit.tokens} value={num(result.tokens, 0)} />
               <Row label={t.profit.buyFees} value={sol(result.feesBuy)} sub={pct(result.buy.feeRate)} />
-              <Row label={t.profit.sellFees} value={sol(result.feesSell)} sub={result.sell ? pct(result.sell.feeRate) : undefined} tone={s.halfLife && halfLifeHours! < 48 ? 'neg' : undefined} />
+              <Row label={t.profit.sellFees} value={sol(result.feesSell)} sub={result.sell ? pct(result.sell.feeRate) : undefined} tone={halfLife && halfLifeHours! < 48 ? 'neg' : undefined} />
               <Row label={t.profit.impact} value={sol(result.impact)} sub={t.fee.impactSub} tone="muted" />
               <Row label={t.profit.back} value={sol(result.back)} sub={`${t.common.mcap} ${$(result.exitMcap)}`} strong />
             </dl>
@@ -230,7 +232,7 @@ export function ProfitCalculator() {
             </div>
             <div className="mt-4 space-y-2 empty:hidden">
               {launch && !launch.holdersOn && launch.rules.holderFeeBuyBps + launch.rules.holderFeeSellBps > 0 && <Notice>{t.lookup.holdersOff}</Notice>}
-              {launch?.customHook && <Notice tone="warn">{t.lookup.customHook}</Notice>}
+              {launch?.halfLife ? <Notice>{t.lookup.halfLife}</Notice> : launch?.customHook && <Notice tone="warn">{t.lookup.customHook}</Notice>}
             </div>
           </>
         ) : result && !result.ok ? (

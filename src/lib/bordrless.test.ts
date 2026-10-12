@@ -10,8 +10,14 @@ import {
   mcapSol,
   openingReserves,
   presetRules,
+  halfLifeBlend,
+  halfLifeCut,
+  MIN_ELIGIBLE,
+  quoteLaunchSell,
   quoteLaunchSwap,
   quoteTrade,
+  sellAfterCurve,
+  TOKEN_SUPPLY,
   reservesAtMcap,
   rulesProblem,
   sideFeeBps,
@@ -57,7 +63,7 @@ describe('headline fee per side', () => {
     expect(headlineFees(presetRules('diamond-hands'))).toEqual({ buyBps: 217, sellBps: 217 });
   });
   it('drops holder rewards while nobody is eligible', () => {
-    expect(headlineFees(presetRules('diamond-hands'), LP_FEE_BPS, false).buyBps).toBe(sideFeeBps('buy', { lpFeeBps: 30, creatorFeeBps: 50, holderFeeBps: 0, burnBps: 0 }));
+    expect(headlineFees(presetRules('diamond-hands'), LP_FEE_BPS, false).buyBps).toBe(sideFeeBps('buy', { lpFeeBps: 30, creatorFeeBps: 50, holderFeeBps: 0, burnBps: 0, protocolShareBps: 2500 }));
   });
   it('no rules pay only the LP fee', () => {
     expect(sideFeeBps('buy', { lpFeeBps: 30, creatorFeeBps: 0, holderFeeBps: 0, burnBps: 0 })).toBe(30);
@@ -131,5 +137,62 @@ describe('rules and earnings', () => {
     expect(e.toHolders).toBeCloseTo(1);
     expect(e.yours).toBeCloseTo(0.1);
     expect(e.protocol).toBeCloseTo(0.375 + 0.3);
+  });
+});
+
+describe('Bordrless share is on top of the cuts (docs/integration/03-indexing-trades.md, mainnet events)', () => {
+  const p = (creatorFeeBps: number) => ({ creatorFeeBps, holderFeeBuyBps: 0, holderFeeSellBps: 0, burnBuyBps: 0, burnSellBps: 0, eligible: TOKEN_SUPPLY, minEligible: MIN_ELIGIBLE });
+
+  it('a 0.5 SOL buy at 1% creator fee: the creator keeps 0.005, Bordrless takes LP on 0.495 plus 25% of 0.005', () => {
+    const r = reservesAtMcap(200, curveParams(virtualQuoteForSolPrice(150)));
+    const q = quoteLaunchSwap(r, 'buy', 500_000_000n, 30, 2500, p(100));
+    expect(q.creatorFee).toBe(5_000_000n);
+    // the event's protocolFee carries the LP fee and the share together: 0.002735 SOL
+    expect(q.lpFee + q.protocolFee).toBe(2_735_000n);
+  });
+
+  it('the Half-Life sell from mainnet: 19.4% exit fee, 1% creator fee, every lamport as the event shows', () => {
+    const amountIn = 14_811_734_334_883n;
+    const cut = 2_876_498_054_771n;
+    // the curve's output for that trade, the one value that reproduces all three event fields
+    const r = sellAfterCurve(716_140_054n, amountIn - cut, cut, 30, 2500, p(100));
+    expect(r.delivered).toBe(662_457_069n); // deliveredOut
+    expect(r.creatorFee).toBe(6_708_427n); // cutsOut
+    expect(r.lpFee + r.protocolFee).toBe(46_974_558n); // protocolFee: LP + 25% of both cuts' value
+  });
+
+  it('with no token cut, the Half-Life-aware sell is exactly quoteLaunchSwap on every sell vector', () => {
+    for (const v of vectors.swaps.filter((x) => x.side === 'sell')) {
+      const r = { baseReserve: big(v.reserves.baseReserve), quoteReserve: big(v.reserves.quoteReserve), virtualBase: big(v.reserves.virtualBase), virtualQuote: big(v.reserves.virtualQuote) };
+      const pp = { ...v.params, eligible: big(v.params.eligible), minEligible: big(v.params.minEligible) };
+      const a = quoteLaunchSell(r, big(v.amountIn), () => 0n, v.lpFeeBps, v.protocolShareBps, pp);
+      expect({ delivered: str(a.delivered), protocolFee: str(a.protocolFee), lpFee: str(a.lpFee), failure: a.failure }).toEqual({
+        delivered: v.expected.delivered,
+        protocolFee: v.expected.protocolFee,
+        lpFee: v.expected.lpFee,
+        failure: v.expected.failure,
+      });
+    }
+  });
+});
+
+describe('Half-Life, as programs/half_life/src/lib.rs computes it', () => {
+  it('fee_on rounds down and never exceeds the amount', () => {
+    expect(halfLifeCut(1_000n, 0)).toBe(200n);
+    expect(halfLifeCut(4n, 0)).toBe(0n);
+    expect(halfLifeCut(1_000n, null)).toBe(200n); // a holding never stamped pays the full fee
+  });
+  it('blend averages arrival times by weight', () => {
+    expect(halfLifeBlend(0n, 999n, 50n, 100n)).toBe(100n);
+    expect(halfLifeBlend(100n, 0n, 100n, 1_000n)).toBe(500n);
+    expect(halfLifeBlend(300n, 0n, 100n, 1_000n)).toBe(250n);
+    expect(halfLifeBlend(1_000_000n, 0n, 1n, 86_400n)).toBe(0n);
+    expect(halfLifeBlend(1n, 0n, 1_000_000n, 86_400n)).toBe(86_399n);
+  });
+  it('a sale pays Bordrless 25% of the exit fee value on top', () => {
+    const r = reservesAtMcap(400, curveParams(virtualQuoteForSolPrice(150)));
+    const q = quoteTrade({ side: 'sell', amount: 1_000_000, rules: presetRules('plain'), reserves: r, halfLifeAgeSecs: 0 });
+    expect(q.halfLifeShare).toBeGreaterThan(0);
+    expect(q.halfLifeShare / q.halfLifeSol).toBeCloseTo(0.25, 6);
   });
 });

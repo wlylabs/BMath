@@ -72,7 +72,7 @@
   --accent-ink: #151515;
   --accent-strong: #8fa0ff;
   --accent-wash: #3a3320;
-  --chart: #8fa0ff;
+  --chart: #6f84ff;
   --pos: #7fd49c;
   --pos-wash: #1d3325;
   --neg: #ff9184;
@@ -154,7 +154,7 @@
     scroll-padding-top: 4.5rem;
   }
   /* keyboard focus and anchors stop above the bottom dock, and above the result bar while it shows */
-  @media (width < 64rem) {
+  @media (width < 80rem) {
     html {
       scroll-padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));
     }
