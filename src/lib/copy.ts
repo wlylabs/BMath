@@ -1,7 +1,5 @@
-import { id } from './copy.id';
-
-/** English interface copy; the Indonesian copy in copy.id.ts has the same shape. */
-const en = {
+/** Interface copy. */
+export const t = {
   meta: {
     title: 'BMath: Fee and profit calculator for Bordrless',
   },
@@ -365,36 +363,3 @@ const en = {
     retry: 'Try again',
   },
 };
-
-export type Copy = typeof en;
-
-export type Lang = 'en' | 'id';
-
-export const LANGS: readonly Lang[] = ['en', 'id'];
-
-export const LANG_LABELS: Record<Lang, string> = { en: 'EN', id: 'ID' };
-
-const COPY: Record<Lang, Copy> = { en, id };
-
-let current: Lang = 'en';
-
-export function getLang(): Lang {
-  return current;
-}
-
-/**
- * Switches the language `t` reads from. Only LangProvider calls this, during
- * render and before its subtree renders; the static export always renders English.
- */
-export function setLang(lang: Lang) {
-  current = lang;
-}
-
-/**
- * All interface copy, in the current language. Every read goes through the
- * proxy, so code reads `t.nav.home` at render time and gets the language the
- * page is showing; LangProvider remounts the app when it changes.
- */
-export const t: Copy = new Proxy(en, {
-  get: (_, key) => COPY[current][key as keyof Copy],
-});

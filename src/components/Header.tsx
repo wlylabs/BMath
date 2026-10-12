@@ -9,7 +9,6 @@ import { ROUTES, samePage } from '../lib/routes';
 import { BORDRLESS_URL } from '../lib/site';
 import { InstallButton } from './pwa/PwaProvider';
 import { NavLink } from './NavLink';
-import { LangToggle } from './LangProvider';
 import { PixelIcon, type PixelIconName } from './PixelIcon';
 
 /** Each section keeps one signal colour, in the header, the dock and the cards. */
@@ -79,7 +78,6 @@ export function Header() {
         </div>
         <div className="flex items-center gap-2">
           <InstallButton />
-          <LangToggle />
           <button
             type="button"
             onClick={(e) => {

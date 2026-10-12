@@ -382,11 +382,6 @@ body::before {
   animation: blink 1.2s steps(1, end) infinite;
 }
 
-/* ---------- language: hidden until a saved choice applies (LangProvider.tsx) ---------- */
-html.lang-pending body {
-  visibility: hidden;
-}
-
 /* ---------- tap feedback ---------- */
 html {
   -webkit-tap-highlight-color: transparent;

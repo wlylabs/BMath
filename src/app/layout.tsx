@@ -8,7 +8,6 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Sections';
 import { BottomNav } from '../components/BottomNav';
 import { NavMarker } from '../components/NavMarker';
-import { LangProvider } from '../components/LangProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -43,10 +42,9 @@ export const viewport: Viewport = {
   themeColor: BRAND.lightBg,
 };
 
-// Runs before first paint so the saved or system theme applies without a flash, hides the
-// page until a saved Indonesian choice applies (LangProvider), and
-// keeps the install prompt if the browser offers it before React has loaded.
-const themeScript = `(function(){window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bmathInstall=e});var t;try{t=localStorage.getItem('bmath:theme')}catch(e){}if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t;var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'${BRAND.darkBg}':'${BRAND.lightBg}');var r=document.documentElement;try{if(localStorage.getItem('bmath:lang')==='id'){r.lang='id';r.classList.add('lang-pending');setTimeout(function(){r.classList.remove('lang-pending')},1500)}}catch(e){}})();`;
+// Runs before first paint so the saved or system theme applies without a flash, and keeps
+// the install prompt if the browser offers it before React has loaded.
+const themeScript = `(function(){window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bmathInstall=e});var t;try{t=localStorage.getItem('bmath:theme')}catch(e){}if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t;var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'${BRAND.darkBg}':'${BRAND.lightBg}');})();`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -57,13 +55,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <PwaProvider>
-          <LangProvider>
-            <Header />
-            <main id="main">{children}</main>
-            <Footer />
-            <BottomNav />
-            <Toaster />
-          </LangProvider>
+          <Header />
+          <main id="main">{children}</main>
+          <Footer />
+          <BottomNav />
+          <Toaster />
           <NavMarker />
         </PwaProvider>
       </body>
