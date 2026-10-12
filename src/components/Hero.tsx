@@ -95,8 +95,8 @@ export function Hero() {
 
         <figure className="rise card p-5 sm:p-6" style={at(3)}>
           <figcaption>
-            <p className="label flex items-center gap-2 text-muted">
-              <span className="tag !py-1">{t.hero.receipt}</span>
+            <p className="label flex flex-wrap items-center gap-x-2 gap-y-1.5 text-muted">
+              <span className="tag shrink-0 whitespace-nowrap !py-1">{t.hero.receipt}</span>
               {t.hero.receiptSub(t.common.presets['diamond-hands']!)}
             </p>
             <p className="display mt-3 text-4xl text-ink">{t.hero.receiptTitle}</p>
