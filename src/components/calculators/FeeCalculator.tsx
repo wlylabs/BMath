@@ -235,7 +235,7 @@ export function FeeCalculator() {
             <dl className="mt-5 divide-y divide-line border-t border-ink">
               {result.creatorFee > 0 && <Row label={t.fee.creator} value={sol(result.creatorFee)} />}
               {result.holderFee > 0 && <Row label={t.fee.holders} value={sol(result.holderFee)} />}
-              {result.protocolFee > 0 && <Row label={t.fee.share} value={sol(result.protocolFee)} sub={t.fee.shareSub} />}
+              {result.protocolFee > 0 && <Row label={t.fee.share} value={sol(result.protocolFee)} sub={result.halfLifeShare > 0 ? t.fee.shareSubHalfLife : t.fee.shareSub} />}
               <Row label={inSniper && !firstBuy ? t.fee.lpSniper : t.fee.lp} value={sol(result.lpFee)} sub={pct(result.lpFeeBps / 10_000)} tone={inSniper && !firstBuy ? 'neg' : undefined} />
               {result.burnTokens > 0 && <Row label={t.fee.burn} value={sol(result.burnSol)} sub={t.fee.burnSub(num(result.burnTokens, 0))} />}
               {result.halfLifeTokens > 0 && <Row label={t.fee.halfLife} value={sol(result.halfLifeSol)} sub={t.fee.halfLifeSub(num(result.halfLifeTokens, 0))} tone="neg" />}

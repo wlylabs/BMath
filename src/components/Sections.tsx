@@ -8,10 +8,10 @@ import { InstallButton } from './pwa/PwaProvider';
 import { PixelIcon } from './PixelIcon';
 
 export function Methodology() {
-  const blocks = [
+  const blocks: { id: string; title: string; body: string; note?: string }[] = [
     { id: 'order', title: t.method.orderTitle, body: t.method.orderBody },
     { id: 'fee', title: t.method.feeTitle, body: t.method.feeBody },
-    { id: 'share', title: t.method.shareTitle, body: t.method.shareBody },
+    { id: 'share', title: t.method.shareTitle, body: t.method.shareBody, note: t.method.shareSource },
     { id: 'sniper', title: t.method.sniperTitle, body: t.method.sniperBody },
     { id: 'holders', title: t.method.holdersTitle, body: t.method.holdersBody },
     { id: 'curve', title: t.method.curveTitle, body: t.method.curveBody },
@@ -37,6 +37,7 @@ export function Methodology() {
               {b.title}
             </h2>
             <p className="mt-2 leading-relaxed text-ink-2">{b.body}</p>
+            {b.note && <p className="label mt-3 border-t border-line pt-2 text-muted">{b.note}</p>}
           </article>
         ))}
       </div>
