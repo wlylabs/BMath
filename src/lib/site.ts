@@ -1,14 +1,13 @@
 import { t } from './copy';
 
+/** The production site. Canonical, Open Graph, sitemap, robots and manifest URLs all use it. */
+export const PRODUCTION_URL = 'https://bordrlessmath.vercel.app';
+
 /**
- * Absolute origin for canonical, Open Graph and sitemap URLs. Set SITE_URL when
- * deploying anywhere other than Vercel, which provides its own production URL.
+ * Absolute origin for canonical, Open Graph and sitemap URLs. Set SITE_URL to override it (for a
+ * preview or another domain); otherwise every build, preview deploys included, points at production.
  */
-export const SITE_URL =
-  process.env.SITE_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : 'http://localhost:3000');
+export const SITE_URL = (process.env.SITE_URL ?? PRODUCTION_URL).replace(/\/+$/, '');
 
 export const SITE_NAME = 'BMath';
 export const SITE_TITLE = t.meta.title;

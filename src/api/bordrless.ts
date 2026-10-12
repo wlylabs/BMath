@@ -2,9 +2,8 @@ import { headlineFees, type Reserves, type Rules } from '../lib/bordrless';
 
 /**
  * Bordrless's public API (the one bordrless.app itself reads). It sends no CORS headers, so the
- * browser reaches it through this site's own origin: a rewrite in vercel.json (and in
- * next.config.ts for `next dev`) forwards /api/bordrless/<path>/ to https://bordrless.app/api/<path>.
- * Set NEXT_PUBLIC_BORDRLESS_API to point somewhere else.
+ * browser reaches it through this site's own route handler (src/app/api/bordrless), which caches
+ * each answer for a minute. Set NEXT_PUBLIC_BORDRLESS_API to point somewhere else.
  */
 const BASE = process.env.NEXT_PUBLIC_BORDRLESS_API ?? '/api/bordrless';
 
@@ -80,7 +79,7 @@ export interface Overview {
 }
 
 async function get<T>(path: string, query: URLSearchParams | null, signal?: AbortSignal): Promise<T> {
-  // the trailing slash keeps hosts that add one (trailingSlash) from redirecting before the rewrite
+  // with the trailing slash the site's own trailingSlash setting has nothing to redirect
   const res = await fetch(`${BASE}${path}/${query ? `?${query}` : ''}`, { signal, headers: { accept: 'application/json' } });
   if (!res.ok) throw new Error(`Bordrless API ${res.status}`);
   return (await res.json()) as T;

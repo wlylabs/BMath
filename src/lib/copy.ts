@@ -58,7 +58,10 @@ export const t = {
     graduated: 'Graduated',
     volume: 'Volume 24 h',
     sol: 'SOL',
-    unavailable: 'Live numbers are unavailable right now.',
+    unavailable: 'Live numbers are unavailable right now. The calculators still work.',
+    stale: (time: string) => `Could not refresh; showing numbers from ${time}.`,
+    loading: 'Loading live numbers',
+    retry: 'Try again',
   },
   features: {
     title: 'Three calculators, one launchpad',

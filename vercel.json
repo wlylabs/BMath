@@ -66,11 +66,5 @@
         }
       ]
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/bordrless/:path*/",
-      "destination": "https://bordrless.app/api/:path*"
-    }
   ]
 }
