@@ -1,10 +1,14 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
+import { Check, Copy, ShieldCheck } from 'lucide-react';
 import { compactUsd, num, pct, shortAddress } from '../lib/format';
 import { t } from '../lib/copy';
 import { cx } from '../lib/cx';
 import { ROUTES } from '../lib/routes';
 import { bordrlessTokenUrl, OUR_TOKEN } from '../lib/site';
+import { copyText } from '../lib/clipboard';
+import { toast } from '../lib/toast';
 import { curveParams, graduationMcapSol } from '../lib/bordrless';
 import { useLaunch } from '../hooks/useLaunch';
 import { usePersistentState } from '../hooks/usePersistentState';
@@ -150,6 +154,9 @@ export function OurToken() {
           </div>
         </div>
 
+        {/* the address sits right above the buy button, where the decision is made */}
+        <ContractAddress />
+
         {/* one clear action, one quieter one */}
         <div className="flex flex-col gap-3 border-t-2 border-ink bg-surface-2 p-4 sm:flex-row sm:items-center sm:p-6">
           <a
@@ -172,5 +179,66 @@ export function OurToken() {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * The full mint, ready to copy. The whole row is one big tap target; the first and last four
+ * characters are emphasised because that is what people check against a fake.
+ */
+function ContractAddress() {
+  const mint = OUR_TOKEN.mint;
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const onCopy = async () => {
+    const ok = await copyText(mint);
+    if (!ok) {
+      toast(t.ours.caToastFail);
+      return;
+    }
+    toast(t.ours.caToastOk(OUR_TOKEN.symbol));
+    setCopied(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="border-t-2 border-ink px-4 py-4 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="label text-ink">{t.ours.ca}</p>
+        <span className="label inline-flex items-center gap-1 rounded-sm border border-green px-1.5 py-0.5 text-ink">
+          <ShieldCheck aria-hidden className="size-3.5 text-green" />
+          {t.ours.caOfficial}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={onCopy}
+        aria-label={t.ours.caCopyLabel(OUR_TOKEN.symbol)}
+        className={cx(
+          'press mt-2 flex w-full items-center gap-3 rounded border-2 border-ink bg-surface px-3 py-3 text-left shadow-[3px_3px_0_0_var(--cast)] transition-colors sm:px-4',
+          copied && 'bg-green/15',
+        )}
+      >
+        <code className="num min-w-0 flex-1 break-all text-[15px] leading-snug text-ink-2 sm:text-base">
+          <strong className="font-semibold text-ink">{mint.slice(0, 4)}</strong>
+          {mint.slice(4, -4)}
+          <strong className="font-semibold text-ink">{mint.slice(-4)}</strong>
+        </code>
+        <span
+          aria-hidden
+          className={cx(
+            'inline-flex h-10 w-[6.75rem] shrink-0 items-center justify-center gap-1.5 border-2 border-ink px-3 text-sm font-semibold text-[#151515]',
+            copied ? 'bg-green' : 'bg-sun',
+          )}
+        >
+          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+          {copied ? t.ours.caCopied : t.ours.caCopy}
+        </span>
+      </button>
+      <p className="label mt-2 text-muted">{t.ours.caHint}</p>
+    </div>
   );
 }
