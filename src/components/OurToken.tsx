@@ -19,7 +19,7 @@ const EARLY_HOLDERS = 10;
 /**
  * BMath's own token, live from bordrless.app. Laid out to be acted on: what a holder gets comes
  * first, then who already holds and how far the curve is from graduating, then one clear buy
- * button. Every figure is live and every claim is a rule fixed on chain.
+ * button. Every figure is live and every claim is a rule fixed at launch.
  */
 export function OurToken() {
   const { launch, failed } = useLaunch(OUR_TOKEN.mint);
