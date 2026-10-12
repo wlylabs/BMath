@@ -1,5 +1,6 @@
 import { Hero } from '../components/Hero';
 import { LiveStrip, ToolCards } from '../components/Home';
+import { OurToken } from '../components/OurToken';
 import { CREATOR, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '../lib/site';
 import { PageTransition } from '../components/PageTransition';
 
@@ -22,6 +23,7 @@ export default function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <Hero />
       <LiveStrip />
+      <OurToken />
       <ToolCards />
     </PageTransition>
   );

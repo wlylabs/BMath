@@ -37,3 +37,10 @@ export const BORDRLESS_URL = 'https://bordrless.app';
 export function bordrlessTokenUrl(mint: string): string {
   return `${BORDRLESS_URL}/token/${mint}`;
 }
+
+/** BMath's own token on Bordrless: the Burn preset with a Holders companion. */
+export const OUR_TOKEN = {
+  mint: 'EAgDeURNR7QzDiHNjhVwWvmsBN8mcU7FiNLBzqUBHLE9',
+  symbol: 'BMATH',
+  name: 'Bordrless Math',
+} as const;

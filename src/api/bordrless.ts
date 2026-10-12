@@ -10,7 +10,7 @@ const BASE = process.env.NEXT_PUBLIC_BORDRLESS_API ?? '/api/bordrless';
 /** Bordrless mints are base58 public keys. */
 export const MINT_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
-interface ApiLaunch {
+export interface ApiLaunch {
   mint: string;
   name: string;
   symbol: string;
@@ -31,6 +31,7 @@ interface ApiLaunch {
   rules: { holderFeeBuyBps: number; holderFeeSellBps: number; burnBuyBps: number; burnSellBps: number; maxWalletBps: number };
   preset: string | null;
   customHook: { program?: string } | null;
+  companion?: { template: string | null; split: { buybackBps: number; holdersBps: number; beneficiaryBps: number } } | null;
   buyFeeBps: number;
   sellFeeBps: number;
   baseReserve?: string;
@@ -39,6 +40,8 @@ interface ApiLaunch {
   virtualQuote?: string;
   graduationQuote?: string;
   supply?: string;
+  rewardsDistributed?: string | null;
+  burned?: string | null;
 }
 
 /** A launch as the calculators use it. Amounts are strings so the token can be saved as JSON. */
@@ -68,9 +71,15 @@ export interface Launch {
   customHook: boolean;
   /** That hook is Half-Life, Bordrless's own (programs/half_life). */
   halfLife: boolean;
+  /** The launch's creator is a companion program, which splits each creator fee as fractions of it. */
+  companion: { template: string | null; buyback: number; holders: number; launcher: number } | null;
   reserves: { baseReserve: string; quoteReserve: string; virtualBase: string; virtualQuote: string } | null;
   graduationQuote: string | null;
   supply: string | null;
+  /** SOL paid to holders so far; null without holder rewards. */
+  rewardsSol: number | null;
+  /** Tokens burned by the burn rule so far; null while not tracked. */
+  burnedTokens: number | null;
   fetchedAt: number;
 }
 
@@ -88,7 +97,7 @@ async function get<T>(path: string, query: URLSearchParams | null, signal?: Abor
   return (await res.json()) as T;
 }
 
-function toLaunch(a: ApiLaunch, fetchedAt: number): Launch {
+export function toLaunch(a: ApiLaunch, fetchedAt: number): Launch {
   const rules: Rules = {
     creatorFeeBps: a.creatorFeeBps,
     holderFeeBuyBps: a.rules.holderFeeBuyBps,
@@ -123,11 +132,21 @@ function toLaunch(a: ApiLaunch, fetchedAt: number): Launch {
     preset: a.preset,
     customHook: !!a.customHook,
     halfLife: a.customHook?.program === HALF_LIFE.program,
+    companion: a.companion?.split
+      ? {
+          template: a.companion.template,
+          buyback: a.companion.split.buybackBps / 10_000,
+          holders: a.companion.split.holdersBps / 10_000,
+          launcher: a.companion.split.beneficiaryBps / 10_000,
+        }
+      : null,
     reserves: hasReserves
       ? { baseReserve: a.baseReserve!, quoteReserve: a.quoteReserve!, virtualBase: a.virtualBase ?? '0', virtualQuote: a.virtualQuote ?? '0' }
       : null,
     graduationQuote: a.graduationQuote ?? null,
     supply: a.supply ?? null,
+    rewardsSol: a.rewardsDistributed != null ? Number(a.rewardsDistributed) / 1e9 : null,
+    burnedTokens: a.burned != null ? Number(a.burned) / 1e6 : null,
     fetchedAt,
   };
 }
