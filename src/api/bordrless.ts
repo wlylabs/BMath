@@ -40,6 +40,8 @@ export interface ApiLaunch {
   virtualQuote?: string;
   graduationQuote?: string;
   supply?: string;
+  rewardsDistributed?: string | null;
+  burned?: string | null;
 }
 
 /** A launch as the calculators use it. Amounts are strings so the token can be saved as JSON. */
@@ -74,6 +76,10 @@ export interface Launch {
   reserves: { baseReserve: string; quoteReserve: string; virtualBase: string; virtualQuote: string } | null;
   graduationQuote: string | null;
   supply: string | null;
+  /** SOL paid to holders so far; null without holder rewards. */
+  rewardsSol: number | null;
+  /** Tokens burned by the burn rule so far; null while not tracked. */
+  burnedTokens: number | null;
   fetchedAt: number;
 }
 
@@ -139,6 +145,8 @@ export function toLaunch(a: ApiLaunch, fetchedAt: number): Launch {
       : null,
     graduationQuote: a.graduationQuote ?? null,
     supply: a.supply ?? null,
+    rewardsSol: a.rewardsDistributed != null ? Number(a.rewardsDistributed) / 1e9 : null,
+    burnedTokens: a.burned != null ? Number(a.burned) / 1e6 : null,
     fetchedAt,
   };
 }
