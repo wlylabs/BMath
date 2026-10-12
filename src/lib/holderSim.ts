@@ -12,17 +12,19 @@ export type ScenarioId = 'quiet' | 'steady' | 'busy' | 'viral';
 
 export interface Scenario {
   id: ScenarioId;
-  /** Typical volume per day, in SOL. */
+  /** Typical volume per day, in SOL, at the least. */
   volumeSol: number;
+  /** Typical volume per day as a share of the market cap, so a bigger token trades more. */
+  turnover: number;
   /** How far the market cap climbs over the first month, as a multiple; it then holds there. */
   mcapMultiple: number;
 }
 
 export const SCENARIOS: readonly Scenario[] = [
-  { id: 'quiet', volumeSol: 5, mcapMultiple: 1.5 },
-  { id: 'steady', volumeSol: 20, mcapMultiple: 3 },
-  { id: 'busy', volumeSol: 80, mcapMultiple: 6 },
-  { id: 'viral', volumeSol: 300, mcapMultiple: 15 },
+  { id: 'quiet', volumeSol: 5, turnover: 0.05, mcapMultiple: 1.5 },
+  { id: 'steady', volumeSol: 20, turnover: 0.15, mcapMultiple: 3 },
+  { id: 'busy', volumeSol: 80, turnover: 0.4, mcapMultiple: 6 },
+  { id: 'viral', volumeSol: 300, turnover: 1, mcapMultiple: 15 },
 ];
 
 export const PERIODS = [7, 30, 90] as const;
@@ -73,6 +75,11 @@ export interface SimResult {
   sellValue: number;
 }
 
+/** A day's typical volume in a scenario at a market cap (in SOL). */
+export function typicalVolume(s: Scenario, mcapSol: number): number {
+  return Math.max(s.volumeSol, s.turnover * mcapSol);
+}
+
 /** A small, fast, seedable PRNG (mulberry32). */
 export function rng(seed: number): () => number {
   let a = seed >>> 0;
@@ -113,10 +120,10 @@ export function simulate(i: SimInput): SimResult {
     const roll = random();
     const event: DayEvent = roll < 0.1 ? 'big' : roll > 0.85 ? 'quiet' : null;
     const swing = 0.6 + random() * 0.8;
-    const volumeSol = i.scenario.volumeSol * (event === 'big' ? 3 : event === 'quiet' ? 0.3 : swing);
     const buyShare = 0.45 + random() * 0.15;
 
     const mcap = mcapOn(d);
+    const volumeSol = typicalVolume(i.scenario, mcap) * (event === 'big' ? 3 : event === 'quiet' ? 0.3 : swing);
     const pool = i.pool.at(mcap);
     // tokens out of the pool are in holders' hands, yours among them; on the curve the quarter
     // of the supply kept for the graduation pool is not

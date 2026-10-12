@@ -2,23 +2,25 @@ import { BRAND, MARK } from './brand';
 import type { DayEvent } from './holderSim';
 
 /**
- * An 8-second vertical video of one Holder Simulator run, drawn on a canvas and encoded in the
- * browser: MP4 (H.264) through Mediabunny and WebCodecs where the browser can, WebM otherwise, and
- * MediaRecorder as the last resort. The beats follow how short videos are watched:
+ * An 8-second 16:9 video of one Holder Simulator run (1920×1080, YouTube's size), drawn on a canvas
+ * and encoded in the browser: MP4 (H.264) through Mediabunny and WebCodecs where the browser can,
+ * WebM otherwise, and MediaRecorder as the last resort. A BMath watermark sits in the corner of
+ * every frame. The beats follow how short videos are watched:
  *
  *   0–1 s  the hook: "1 SOL → ? SOL", a question the viewer stays to see answered
  *   1–5 s  the days play out, the number climbs, big days jump
  *   5–7 s  the reveal: the rank pops in, the peak the video ends on
- *   7–8 s  the outro: the mark, $BMATH and where to play, fading back to the hook so a loop runs on
+ *   7–8 s  the outro: the token, BMath and where to play, fading back to the hook so a loop runs on
  */
 
-export const VIDEO = { width: 1080, height: 1920, fps: 30, seconds: 8 } as const;
+export const VIDEO = { width: 1920, height: 1080, fps: 30, seconds: 8 } as const;
 
 export interface VideoRun {
   entrySol: number;
   days: { reward: number; total: number; event: DayEvent }[];
   rank: { name: string; bg: string; fg: string };
   symbol: string;
+  name: string;
   mintShort: string;
   url: string;
   text: {
@@ -31,6 +33,7 @@ export interface VideoRun {
     payback: string;
     share: string;
     cta: string;
+    madeWith: string;
     disclaimer: string;
   };
 }
@@ -137,6 +140,52 @@ function tag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, 
   return w;
 }
 
+/** Fits text into a width by trimming it with an ellipsis. */
+function fit(ctx: CanvasRenderingContext2D, text: string, width: number): string {
+  if (ctx.measureText(text).width <= width) return text;
+  let out = text;
+  while (out.length > 1 && ctx.measureText(`${out}…`).width > width) out = out.slice(0, -1);
+  return `${out}…`;
+}
+
+/** The token's badge: its ticker's first letters on ink, as the site shows a token without art. */
+function badge(ctx: CanvasRenderingContext2D, symbol: string, x: number, y: number, size: number) {
+  ctx.fillStyle = C.cast;
+  ctx.fillRect(x + 6, y + 6, size, size);
+  ctx.fillStyle = C.ink;
+  ctx.fillRect(x, y, size, size);
+  display(ctx, size * 0.5);
+  ctx.fillStyle = C.sun;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(symbol.slice(0, 2).toUpperCase(), x + size / 2, y + size / 2 + 2);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+/** BMath's mark and address in the bottom-right corner, on light or dark. */
+function watermark(ctx: CanvasRenderingContext2D, v: VideoRun, onDark: boolean) {
+  const { width: W, height: H } = VIDEO;
+  mono(ctx, 24, 500);
+  const urlW = ctx.measureText(v.url).width;
+  display(ctx, 46);
+  const nameW = ctx.measureText('BMath').width;
+  const textW = Math.max(urlW, nameW);
+  const size = 64;
+  const right = W - 64;
+  const x = right - textW - 18 - size;
+  const y = H - 64 - size;
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  logo(ctx, x, y, size);
+  ctx.fillStyle = onDark ? C.surface : C.ink;
+  ctx.fillText('BMath', x + size + 18, y + 36);
+  mono(ctx, 24, 500);
+  ctx.fillStyle = onDark ? C.lineStrong : C.muted;
+  ctx.fillText(v.url, x + size + 18, y + 64);
+  ctx.restore();
+}
+
 /** Draws the frame at `time` seconds. */
 export function drawFrame(ctx: CanvasRenderingContext2D, time: number, v: VideoRun) {
   const { width: W, height: H } = VIDEO;
@@ -151,20 +200,26 @@ export function drawFrame(ctx: CanvasRenderingContext2D, time: number, v: VideoR
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
 
-  // header
-  logo(ctx, 72, 84, 104);
-  display(ctx, 84);
+  // the token
+  badge(ctx, v.symbol, 90, 64, 88);
+  display(ctx, 76);
   ctx.fillStyle = C.ink;
-  ctx.fillText('BMath', 200, 166);
-  tag(ctx, 'HOLDER SIMULATOR', W - 72, 106, 30, 'right');
+  const sym = `$${v.symbol}`;
+  ctx.fillText(sym, 206, 136);
+  const symW = ctx.measureText(sym).width;
+  mono(ctx, 28, 500);
+  ctx.fillStyle = C.muted;
+  ctx.fillText(fit(ctx, v.name, 880 - symW), 206 + symW + 24, 132);
+  tag(ctx, 'HOLDER SIMULATOR', W - 90, 84, 28, 'right');
 
-  // the hook, then the answer
-  mono(ctx, 34, 500);
+  // left: the hook, then the answer
+  const L = 90;
+  mono(ctx, 30, 500);
   ctx.fillStyle = C.ink2;
-  ctx.fillText(v.text.hookLine, 72, 330);
-  display(ctx, 190);
+  ctx.fillText(v.text.hookLine, L, 270);
+  display(ctx, 150);
   ctx.fillStyle = C.ink;
-  ctx.fillText(`${fmtSol(v.entrySol).replace(/\.?0+$/, '')} SOL →`, 66, 520);
+  ctx.fillText(`${fmtSol(v.entrySol).replace(/\.?0+$/, '')} SOL →`, L - 4, 420);
 
   const shown = daysAt(t, n);
   const whole = Math.min(n, Math.floor(shown));
@@ -172,34 +227,68 @@ export function drawFrame(ctx: CanvasRenderingContext2D, time: number, v: VideoR
   if (t < 1) {
     // the question: a blinking "?" on a sun block
     const on = Math.floor(t * 4) % 2 === 0;
-    display(ctx, 190);
-    ctx.fillStyle = on ? C.sun : C.bg;
+    display(ctx, 150);
     const qw = ctx.measureText('?').width;
-    ctx.fillRect(66, 560, qw + 60, 190);
+    ctx.fillStyle = on ? C.sun : C.bg;
+    ctx.fillRect(L - 4, 452, qw + 48, 150);
     ctx.fillStyle = C.ink;
-    ctx.fillText('?', 96, 715);
-    ctx.fillText('SOL', 66 + qw + 100, 715);
+    ctx.fillText('?', L + 20, 576);
+    ctx.fillText('SOL', L + qw + 80, 576);
   } else {
     const value = t >= 5 ? v.days[n - 1]!.total : (current?.total ?? 0);
-    display(ctx, 190);
+    display(ctx, 150);
     ctx.fillStyle = C.pos;
-    ctx.fillText(`${fmtSol(value)} SOL`, 66, 715);
+    ctx.fillText(`${fmtSol(value)} SOL`, L - 4, 576);
   }
 
-  // the days
-  const cx = 72;
-  const cy = 820;
-  const cw = W - 144 - 12;
-  const ch = 560;
+  // left, below: the rank, a dashed "rank ?" until it pops in
+  const rx = L;
+  const ry = 640;
+  const rw = 770;
+  const rh = 260;
+  if (t < 5) {
+    ctx.setLineDash([20, 14]);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = C.lineStrong;
+    ctx.strokeRect(rx, ry, rw, rh);
+    ctx.setLineDash([]);
+    display(ctx, 96);
+    ctx.fillStyle = C.lineStrong;
+    ctx.textAlign = 'center';
+    ctx.fillText(v.text.rankHidden, rx + rw / 2, ry + rh / 2 + 34);
+    ctx.textAlign = 'left';
+  } else {
+    const k = Math.max(0.01, easeBack((t - 5) / 0.45));
+    ctx.save();
+    ctx.translate(rx + rw / 2, ry + rh / 2);
+    ctx.scale(k, k);
+    ctx.translate(-(rx + rw / 2), -(ry + rh / 2));
+    card(ctx, rx, ry, rw, rh, v.rank.bg, 12);
+    ctx.fillStyle = v.rank.fg;
+    mono(ctx, 26, 600);
+    ctx.fillText(v.text.rankLabel, rx + 36, ry + 54);
+    display(ctx, 96);
+    ctx.fillText(fit(ctx, v.rank.name, rw - 72), rx + 32, ry + 142);
+    mono(ctx, 28, 500);
+    ctx.fillText(v.text.payback, rx + 36, ry + 196);
+    ctx.fillText(v.text.share, rx + 36, ry + 236);
+    ctx.restore();
+  }
+
+  // right: the days
+  const cx = 950;
+  const cy = 210;
+  const cw = W - 90 - 12 - cx;
+  const ch = 690;
   card(ctx, cx, cy, cw, ch, C.surface);
-  mono(ctx, 34, 600);
+  mono(ctx, 32, 600);
   ctx.fillStyle = C.ink;
-  ctx.fillText(v.text.day(Math.max(t < 1 ? 0 : 1, Math.ceil(Math.min(shown, n))), n), cx + 40, cy + 74);
+  ctx.fillText(v.text.day(Math.max(t < 1 ? 0 : 1, Math.ceil(Math.min(shown, n))), n), cx + 40, cy + 70);
 
   const bx = cx + 40;
   const by = cy + ch - 120;
   const bw = cw - 80;
-  const bh = 330;
+  const bh = 440;
   const max = Math.max(...v.days.map((d) => d.reward), 1e-12);
   const gap = n > 40 ? 2 : 6;
   const barW = (bw - gap * (n - 1)) / n;
@@ -219,53 +308,16 @@ export function drawFrame(ctx: CanvasRenderingContext2D, time: number, v: VideoR
   ctx.fillStyle = C.ink;
   ctx.fillRect(bx, by, bw, 5);
 
-  // a big day gets its own call-out while it is the newest
+  // a big or slow day gets a call-out while it is the newest
   if (t >= 1 && t < 5.2 && current?.event) {
     const big = current.event === 'big';
-    tag(ctx, big ? v.text.bigDay : v.text.slowDay, bx, by + 34, 32, 'left', big ? C.sun : C.lineStrong, C.ink);
-  }
-
-  // the reveal: a dashed "rank ?" until it pops in
-  const rx = 72;
-  const ry = 1430;
-  const rw = W - 144 - 12;
-  const rh = 380;
-  if (t < 5) {
-    ctx.setLineDash([22, 16]);
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = C.lineStrong;
-    ctx.strokeRect(rx, ry, rw, rh);
-    ctx.setLineDash([]);
-    display(ctx, 110);
-    ctx.fillStyle = C.lineStrong;
-    ctx.textAlign = 'center';
-    ctx.fillText(v.text.rankHidden, rx + rw / 2, ry + rh / 2 + 38);
-    ctx.textAlign = 'left';
-  } else {
-    const s = easeBack((t - 5) / 0.45);
-    ctx.save();
-    ctx.translate(rx + rw / 2, ry + rh / 2);
-    ctx.scale(Math.max(0.01, s), Math.max(0.01, s));
-    ctx.translate(-(rx + rw / 2), -(ry + rh / 2));
-    card(ctx, rx, ry, rw, rh, v.rank.bg, 14);
-    ctx.fillStyle = v.rank.fg;
-    mono(ctx, 30, 600);
-    ctx.fillText(v.text.rankLabel, rx + 44, ry + 72);
-    display(ctx, 132);
-    ctx.fillText(v.rank.name, rx + 40, ry + 196);
-    mono(ctx, 32, 500);
-    ctx.fillText(v.text.payback, rx + 44, ry + 278);
-    ctx.fillText(v.text.share, rx + 44, ry + 328);
-    ctx.restore();
+    tag(ctx, big ? v.text.bigDay : v.text.slowDay, bx, by + 32, 30, 'left', big ? C.sun : C.lineStrong, C.ink);
   }
 
   // footer
-  mono(ctx, 30, 600);
-  ctx.fillStyle = C.ink2;
-  ctx.fillText(v.url, 72, 1858);
   mono(ctx, 24, 500);
   ctx.fillStyle = C.muted;
-  ctx.fillText(v.text.disclaimer, 72, 1894);
+  ctx.fillText(v.text.disclaimer, L, H - 66);
 
   // the outro slides up over everything
   if (outro > 0) {
@@ -274,22 +326,27 @@ export function drawFrame(ctx: CanvasRenderingContext2D, time: number, v: VideoR
     ctx.fillRect(0, top, W, H);
     ctx.save();
     ctx.translate(0, top);
-    logo(ctx, W / 2 - 130, 470, 260);
+    ctx.textAlign = 'center';
     display(ctx, 220);
     ctx.fillStyle = C.surface;
-    ctx.textAlign = 'center';
-    ctx.fillText(`$${v.symbol}`, W / 2, 1000);
-    display(ctx, 96);
+    ctx.fillText(fit(ctx, sym, W - 200), W / 2, 380);
+    mono(ctx, 34, 600);
+    ctx.fillStyle = C.lineStrong;
+    ctx.fillText(v.text.madeWith.toUpperCase(), W / 2, 520);
+    display(ctx, 110);
     ctx.fillStyle = C.sun;
-    ctx.fillText(v.text.cta, W / 2, 1180);
+    ctx.fillText(v.text.cta, W / 2, 680);
     mono(ctx, 40, 600);
     ctx.fillStyle = C.surface;
-    ctx.fillText(v.url, W / 2, 1290);
-    mono(ctx, 32, 500);
+    ctx.fillText(v.url, W / 2, 770);
+    mono(ctx, 30, 500);
     ctx.fillStyle = C.lineStrong;
-    ctx.fillText(`CA ${v.mintShort}`, W / 2, 1370);
+    ctx.fillText(`CA ${v.mintShort}`, W / 2, 830);
     ctx.restore();
   }
+
+  // the watermark stays on every frame, over the outro too
+  watermark(ctx, v, outro > 0.5);
   ctx.restore();
 }
 

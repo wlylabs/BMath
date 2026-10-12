@@ -9,10 +9,11 @@ import { cx } from '../lib/cx';
 import { shareLink } from '../lib/clipboard';
 import { toast } from '../lib/toast';
 import { modelPool } from '../lib/roundtrip';
-import { PERIODS, rankOf, SCENARIOS, simulate, type PeriodDays, type Rank, type ScenarioId, type SimResult } from '../lib/holderSim';
+import { PERIODS, rankOf, SCENARIOS, simulate, typicalVolume, type PeriodDays, type Rank, type ScenarioId, type SimResult } from '../lib/holderSim';
 import { ROUTES } from '../lib/routes';
 import { bordrlessTokenUrl, OUR_TOKEN, SITE_URL } from '../lib/site';
-import { reservesOf } from '../api/bordrless';
+import { reservesOf, type Launch } from '../api/bordrless';
+import { TokenLookup } from './TokenLookup';
 import { useLaunch } from '../hooks/useLaunch';
 import { useOverview } from '../hooks/useOverview';
 import { usePersistentState } from '../hooks/usePersistentState';
@@ -29,6 +30,8 @@ interface Setup {
 interface Run extends Omit<Setup, 'entry'> {
   entry: number;
   seed: number;
+  /** The token the run played, kept so picking another one leaves the result as it was. */
+  token: { mint: string; symbol: string; name: string };
 }
 
 interface Best {
@@ -59,7 +62,13 @@ const RANK_TILE: Record<Rank, string> = {
 };
 
 export function HolderSim() {
-  const { launch, failed } = useLaunch(OUR_TOKEN.mint);
+  // any Bordrless token by CA, name or ticker; $BMATH until one is picked
+  const [picked, setPicked] = usePersistentState<Launch | null>('play-token', null);
+  const ours = useLaunch(OUR_TOKEN.mint);
+  const launch = picked ?? ours.launch;
+  const failed = !picked && ours.failed;
+  const symbol = launch?.symbol ?? OUR_TOKEN.symbol;
+  const paysHolders = !launch || launch.rules.holderFeeBuyBps + launch.rules.holderFeeSellBps > 0 || (launch.companion?.holders ?? 0) > 0;
   const { solUsd } = useOverview();
   const [setup, setSetup] = usePersistentState<Setup>('play', INITIAL);
   const [best, setBest] = usePersistentState<Best>('play-best', NO_BEST);
@@ -97,7 +106,7 @@ export function HolderSim() {
 
   const start = () => {
     if (!entryValid || !pool || !launch) return;
-    const next: Run = { entry, scenario: setup.scenario, days: setup.days, seed: newSeed() };
+    const next: Run = { entry, scenario: setup.scenario, days: setup.days, seed: newSeed(), token: { mint: launch.mint, symbol: launch.symbol, name: launch.name } };
     const scenario = SCENARIOS.find((s) => s.id === next.scenario)!;
     const played = simulate({ pool, rules: launch.rules, split, entrySol: entry, scenario, days: next.days, seed: next.seed });
     const newBest = played.ok && played.totalRewards > best.sol;
@@ -113,7 +122,7 @@ export function HolderSim() {
 
   const share = async () => {
     if (!result || !run || !rank) return;
-    const text = t.play.shareText(num(result.totalRewards, 3), run.days, t.play.ranks[rank].name);
+    const text = t.play.shareText(num(result.totalRewards, 3), run.days, t.play.ranks[rank].name, run.token.symbol);
     const outcome = await shareLink(`${SITE_URL}${ROUTES.play}`, t.play.title, text);
     if (outcome === 'copied') {
       toast(t.play.shareCopied);
@@ -133,8 +142,9 @@ export function HolderSim() {
           entrySol: run.entry,
           days: result.days.map((d) => ({ reward: d.reward, total: d.total, event: d.event })),
           rank: { name: t.play.ranks[rank].name, ...RANK_VIDEO[rank] },
-          symbol: OUR_TOKEN.symbol,
-          mintShort: `${OUR_TOKEN.mint.slice(0, 4)}…${OUR_TOKEN.mint.slice(-4)}`,
+          symbol: run.token.symbol,
+          name: run.token.name,
+          mintShort: `${run.token.mint.slice(0, 4)}…${run.token.mint.slice(-4)}`,
           url: `${SITE_URL.replace(/^https?:\/\//, '')}${ROUTES.play.replace(/\/$/, '')}`,
           text: {
             hookLine: t.play.video.hookLine(run.days, scenario),
@@ -146,12 +156,13 @@ export function HolderSim() {
             payback: t.play.video.payback(result.paybackDay),
             share: t.play.video.share(pct(result.days[0]!.share), pct(result.days.at(-1)!.share)),
             cta: t.play.video.cta,
+            madeWith: t.play.video.madeWith,
             disclaimer: t.play.video.disclaimer,
           },
         },
         (p) => setMaking(Math.round(p * 100)),
       );
-      const file = new File([video.blob], `bmath-holder-${run.days}d.${video.extension}`, { type: video.blob.type });
+      const file = new File([video.blob], `bmath-${run.token.symbol.toLowerCase().replace(/[^a-z0-9]+/g, '')}-${run.days}d.${video.extension}`, { type: video.blob.type });
       // phones get the share sheet, which can post it or save it to the gallery
       const touch = window.matchMedia('(pointer: coarse)').matches;
       if (touch && navigator.canShare?.({ files: [file] })) {
@@ -181,12 +192,21 @@ export function HolderSim() {
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_440px] lg:gap-6">
       {/* the setup: three choices, then one big button */}
       <section className="card space-y-6 p-4 sm:p-6" aria-label={t.play.title}>
-        <Field label={<Step n={1}>{t.play.bag}</Step>} htmlFor={ids.entry} hint={!entryValid && setup.entry !== '' ? t.play.bagInvalid : preview?.ok ? t.play.bagHint(compactCount(preview.received)) : undefined}>
+        <Field label={<Step n={1}>{t.play.token}</Step>} hint={t.play.tokenHint}>
+          <TokenLookup token={picked} onChange={setPicked} />
+          {!paysHolders && (
+            <div className="mt-3">
+              <Notice tone="warn">{t.play.noRewards(symbol)}</Notice>
+            </div>
+          )}
+        </Field>
+
+        <Field label={<Step n={2}>{t.play.bag}</Step>} htmlFor={ids.entry} hint={!entryValid && setup.entry !== '' ? t.play.bagInvalid : preview?.ok ? t.play.bagHint(compactCount(preview.received), symbol) : undefined}>
           <NumberInput id={ids.entry} value={setup.entry} onChange={(v) => set('entry', v)} suffix="SOL" placeholder="1" invalid={setup.entry !== '' && !entryValid} />
           <QuickPicks label={t.common.quick} values={ENTRY_PICKS.map((v) => ({ value: v, label: `${v} SOL` }))} current={entryValid ? String(entry) : undefined} onPick={(v) => set('entry', v)} />
         </Field>
 
-        <Field label={<Step n={2}>{t.play.market}</Step>} labelId={ids.market}>
+        <Field label={<Step n={3}>{t.play.market}</Step>} labelId={ids.market}>
           <div role="radiogroup" aria-labelledby={ids.market} className="grid grid-cols-2 gap-2.5">
             {SCENARIOS.map((s) => {
               const on = s.id === setup.scenario;
@@ -204,14 +224,14 @@ export function HolderSim() {
                   )}
                 >
                   <span className="display text-2xl">{copy.name}</span>
-                  <span className={cx('label mt-1 leading-snug', on ? 'text-[#151515]' : 'text-muted')}>{copy.body(num(s.volumeSol, 0), `${s.mcapMultiple}×`)}</span>
+                  <span className={cx('label mt-1 leading-snug', on ? 'text-[#151515]' : 'text-muted')}>{t.play.scenarioBody(compactCount(typicalVolume(s, launch?.mcapSol ?? 0)), `${s.mcapMultiple}×`)}</span>
                 </button>
               );
             })}
           </div>
         </Field>
 
-        <Field label={<Step n={3}>{t.play.period}</Step>} labelId={ids.period}>
+        <Field label={<Step n={4}>{t.play.period}</Step>} labelId={ids.period}>
           <Segmented
             label={t.play.period}
             labelledBy={ids.period}
@@ -291,7 +311,7 @@ export function HolderSim() {
                 />
                 <Row label={t.play.share} value={`${pct(result.days[0]!.share)} → ${pct(result.days.at(-1)!.share)}`} />
                 <Row label={t.play.mcap} value={`${compactUsd(result.startMcap * solUsd)} → ${compactUsd(result.endMcap * solUsd)}`} />
-                {result.burnedTokens > 0 && <Row label={t.play.burned} value={`${compactCount(result.burnedTokens)} $${OUR_TOKEN.symbol}`} />}
+                {result.burnedTokens > 0 && <Row label={t.play.burned} value={`${compactCount(result.burnedTokens)} $${run.token.symbol}`} />}
                 <Row label={t.play.sell} value={sol(result.sellValue)} sub={$(result.sellValue)} strong />
               </dl>
 
@@ -303,8 +323,8 @@ export function HolderSim() {
               </div>
 
               <div className="grid gap-2.5">
-                <a href={bordrlessTokenUrl(OUR_TOKEN.mint)} target="_blank" rel="noopener noreferrer" className="btn btn-ink h-12">
-                  {t.play.buy}
+                <a href={bordrlessTokenUrl(run.token.mint)} target="_blank" rel="noopener noreferrer" className="btn btn-ink h-12">
+                  {t.play.buy(run.token.symbol)}
                   <PixelIcon name="external" className="size-3.5" />
                 </a>
                 <div className="grid grid-cols-2 gap-2.5">

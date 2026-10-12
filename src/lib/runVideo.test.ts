@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { daysAt, outroAt, VIDEO } from './runVideo';
 
 describe('video timeline', () => {
-  it('is 8 seconds of vertical 30 fps', () => {
+  it('is 8 seconds of 1080p at 30 fps', () => {
     expect(VIDEO.seconds * VIDEO.fps).toBe(240);
-    expect(VIDEO.height / VIDEO.width).toBeCloseTo(16 / 9);
+    expect([VIDEO.width, VIDEO.height]).toEqual([1920, 1080]);
   });
   it('holds the hook for the first second, then reveals every day before the rank', () => {
     expect(daysAt(0.5, 30)).toBe(0);

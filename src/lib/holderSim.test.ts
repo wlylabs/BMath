@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { curveParams, graduationMcapSol, virtualQuoteForSolPrice, type Rules } from './bordrless';
 import { modelLaunch } from './roundtrip';
-import { rankOf, rng, SCENARIOS, simulate, type SimInput } from './holderSim';
+import { rankOf, rng, SCENARIOS, simulate, typicalVolume, type SimInput } from './holderSim';
 
 // $BMATH's own rules: 1% creator fee, 0.5% to holders and 0.5% burned on each side
 const RULES: Rules = { creatorFeeBps: 100, holderFeeBuyBps: 50, holderFeeSellBps: 50, burnBuyBps: 50, burnSellBps: 50 };
@@ -84,7 +84,7 @@ describe('simulate', () => {
   });
 
   it('keeps going past graduation', () => {
-    const r = simulate({ ...base, scenario: { id: 'viral', volumeSol: 300, mcapMultiple: 40 } });
+    const r = simulate({ ...base, scenario: { id: 'viral', volumeSol: 300, turnover: 1, mcapMultiple: 40 } });
     expect(r.days.some((d) => d.share < 1)).toBe(true);
     expect(r.ok).toBe(true);
     expect(r.endMcap).toBeGreaterThan(graduationMcapSol(curveParams(vq)));
@@ -93,6 +93,13 @@ describe('simulate', () => {
 
   it('fails cleanly on an empty buy', () => {
     expect(simulate({ ...base, entrySol: 0 }).ok).toBe(false);
+  });
+});
+
+describe('typicalVolume', () => {
+  it('has a floor for small tokens and follows the market cap for big ones', () => {
+    expect(typicalVolume(steady, 10)).toBe(steady.volumeSol);
+    expect(typicalVolume(steady, 100_000)).toBeCloseTo(100_000 * steady.turnover);
   });
 });
 
